@@ -245,7 +245,7 @@ Untuk menjaga aplikasi tetap stabil dan lulus uji kompilasi pada setiap langkahn
 * [x] **Milestone 1:** Ekstraksi Shared Utilities & Types (`src/types/index.ts`, `getBookingPriceIdr`, `formatNumberInput`).
 * [x] **Milestone 2:** Refaktorisasi Formulir Properti Bersama (`PropertyForm` menyatukan `AddPropertyClient` & `EditPropertyClient`).
 * [x] **Milestone 3:** Pemisahan Kamus Terjemahan (`src/lib/dictionaries/`).
-* [ ] **Milestone 4:** Ekstraksi Kalender & Guest Picker (`DualMonthCalendar` untuk `BookingClient` & `SearchFilterBar`).
+* [x] **Milestone 4:** Ekstraksi Kalender & Guest Picker (`DualMonthCalendar` untuk `BookingClient` & `SearchFilterBar`).
 * [ ] **Milestone 5:** Pemecahan Modular `HostDashboardView.tsx` (Dasbor Host & Tamu per Tab).
 * [ ] **Milestone 6:** Pemecahan Modular `AdminDashboardClient.tsx` (Portal Tata Kelola Admin per Tab).
 * [ ] **Milestone 7:** Pemecahan Modular `ProfileClient.tsx` (Pengaturan Akun & Privasi per Tab).
