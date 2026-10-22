@@ -1,1 +1,4 @@
-export const USD_TO_IDR_EXCHANGE_RATE = 18051;
+export { 
+  DEFAULT_USD_EXCHANGE_RATE, 
+  USD_TO_IDR_EXCHANGE_RATE 
+} from "./constants";
