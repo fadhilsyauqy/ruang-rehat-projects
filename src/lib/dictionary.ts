@@ -688,7 +688,8 @@ export const dict = {
 }
 
 export type Lang = 'id' | 'en';
+export type Dictionary = typeof dict['id'];
 
-export const getDictionary = (lang: string) => {
+export const getDictionary = (lang: string): Dictionary => {
   return dict[lang as Lang] || dict['id']
 }

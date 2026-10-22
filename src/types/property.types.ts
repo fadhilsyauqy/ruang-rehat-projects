@@ -91,16 +91,30 @@ export interface PropertyFormData {
   title: string;
   description: string;
   address: string;
-  latitude: number | null;
-  longitude: number | null;
+  latitude: number;
+  longitude: number;
   pricePerNight: number;
   cleaningFee: number;
   price?: number; // legacy USD estimate
+  maxStayNights?: number;
   cancellationPolicy: CancellationPolicy | "FLEXIBLE" | "MODERATE" | "STRICT";
   amenities: string[];
   imageUrls: string[];
   maxGuests: number;
-  bedrooms: number;
-  beds: number;
-  baths: number;
+}
+
+/**
+ * State nilai formulir properti internal
+ */
+export interface PropertyFormValues {
+  title: string;
+  description: string;
+  category: string;
+  cancellationPolicy: CancellationPolicy | "FLEXIBLE" | "MODERATE" | "STRICT";
+  address: string;
+  latitude: number;
+  longitude: number;
+  maxGuests: number;
+  amenities: string[];
+  imageUrls: string[];
 }
