@@ -1,0 +1,1 @@
+export const USD_TO_IDR_EXCHANGE_RATE = 18051;

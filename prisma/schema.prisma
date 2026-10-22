@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  HOST
+  ADMIN
+}
+
+enum KycStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+enum EscrowStatus {
+  HELD
+  RELEASED
+  REFUNDED_TO_GUEST
+  DISPUTED
+  PARTIAL_REFUND
+}
+
+enum RefundStatus {
+  NONE
+  PENDING_ADMIN_TRANSFER
+  COMPLETED
+  REJECTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_RELEASE_TO_HOST
+  RESOLVED_FULL_REFUND
+  RESOLVED_PARTIAL_REFUND
+}
+
+enum CancellationPolicy {
+  FLEXIBLE
+  MODERATE
+  STRICT
+}
+
+model SystemSetting {
+  id                   String   @id @default("global")
+  baseCurrency         String   @default("IDR")
+  usdExchangeRate      Int      @default(18051) // 1 USD = 18.051 IDR
+  guestServiceFeePct   Float    @default(10.0)  // 10% dibebankan ke Tamu
+  hostPlatformFeePct   Float    @default(3.0)   // 3% dipotong dari Host
+  hostCancelPenaltyIdr Int      @default(250000) // Denda pembatalan sepihak oleh Host (Rp 250.000)
+  maxStayNights        Int      @default(28)    // Maksimal 28 malam per transaksi
+  updatedAt            DateTime @updatedAt
+}
+
+model User {
+  id                       String            @id @default(cuid())
+  name                     String?
+  preferredName            String?
+  email                    String?           @unique
+  password                 String?
+  emailVerified            DateTime?
+  image                    String?
+  phoneNumber              String?
+  address                  String?           @db.Text
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+  kycStatus                KycStatus         @default(UNVERIFIED)
+  idCardUrl                String?
+  idCardNumber             String?
+  kycRejectReason          String?           @db.Text
+  role                     Role              @default(GUEST)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  // Privasi & Perlindungan Data Pribadi (UU PDP)
+  hideLastNameReview       Boolean           @default(false)
+  hideSearchEngines        Boolean           @default(false)
+  readReceipts             Boolean           @default(true)
+
+  // Preferensi Notifikasi Interaktif
+  notifyTripReminder       Boolean           @default(true)
+  notifyPromoMarketing     Boolean           @default(false)
+  notifyHostBooking        Boolean           @default(true)
+  notifyHostPayout         Boolean           @default(true)
+
+  // Informasi Penagihan & Faktur Perusahaan (Business Billing)
+  billingCompanyName       String?
+  billingTaxId             String?
+  billingAddress           String?           @db.Text
+
+  accounts                 Account[]
+  sessions                 Session[]
+  properties               Property[]
+  bookings                 Booking[]
+  reviews                  Review[]
+  favorites                Favorite[]
+  bankAccount              HostBankAccount?
+  payouts                  Payout[]
+  penalties                HostPenalty[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Property {
+  id                 String             @id @default(cuid())
+  hostId             String
+  title              String
+  description        String             @db.Text
+  category           String             @default("VILLA")
+  price              Float?             // Legacy USD field (dipertahankan sementara untuk kompatibilitas transisi)
+  pricePerNight      Int                @default(0) // Disimpan dalam IDR murni (Single source of truth)
+  cleaningFee        Int                @default(0) // Disimpan dalam IDR murni
+  maxStayNights      Int                @default(28)
+  cancellationCount  Int                @default(0) // Akumulasi pembatalan sepihak oleh Host
+  latitude           Float
+  longitude          Float
+  address            String             @db.Text
+  maxGuests          Int                @default(1)
+  amenities          String[]           @default([])
+  imageUrls          String[]           @default([])
+  cancellationPolicy CancellationPolicy @default(FLEXIBLE)
+  isPublished        Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  host               User               @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  bookings           Booking[]
+  blockedDates       BlockedDate[]
+  reviews            Review[]
+  favorites          Favorite[]
+
+  @@index([hostId])
+  @@index([category])
+}
+
+model Booking {
+  id                  String        @id @default(cuid())
+  propertyId          String
+  guestId             String
+  startDate           DateTime
+  endDate             DateTime
+  guestsCount         Int           @default(1)
+  
+  // Legacy fields (opsional agar data lama tidak rusak)
+  nightlyRate         Float?
+  totalPrice          Float?
+  cleaningFee         Float?        @default(0)
+  serviceFee          Float?        @default(0)
+
+  // V2 IDR fields (Single source of truth)
+  totalNights         Int           @default(1)
+  nightlyRateIdr      Int           @default(0)  // Harga per malam dalam IDR saat transaksi
+  cleaningFeeIdr      Int           @default(0)  // Biaya kebersihan dalam IDR
+  guestServiceFeeIdr  Int           @default(0)  // 10% biaya layanan tamu
+  hostPlatformFeeIdr  Int           @default(0)  // 3% potongan komisi dari host
+  totalPriceIdr       Int           @default(0)  // Total yang dibayar tamu ke Midtrans (IDR)
+  netHostPayoutIdr    Int           @default(0)  // Bersih yang diterima host: (subtotal + cleaning) - hostPlatformFeeIdr
+
+  status              BookingStatus @default(PENDING)
+  paymentStatus       PaymentStatus @default(PENDING)
+  escrowStatus        EscrowStatus  @default(HELD)
+  escrowReleaseAt     DateTime?                  // Otomatis di-set ke: startDate (14:00 WIB) + 24 Jam
+  checkedInAt         DateTime?                  // Diisi saat QR Code E-Voucher di-scan (Opsional)
+  midtransOrderId     String?       @unique
+  midtransToken       String?       @db.Text
+  expiresAt           DateTime?
+  cancelReason        String?       @db.Text
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Data Pengembalian Dana (Untuk Refund Manual VA/QRIS oleh Admin)
+  cancelledByRole     String?                    // "GUEST" | "HOST" | "SYSTEM"
+  refundAmountIdr     Int           @default(0)
+  refundStatus        RefundStatus  @default(NONE)
+  refundBankName      String?
+  refundAccountNumber String?
+  refundAccountHolder String?
+  refundProofUrl      String?
+  refundedAt          DateTime?
+
+  property            Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guest               User          @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  reviews             Review[]
+  dispute             Dispute?
+  penalties           HostPenalty[]
+
+  @@index([propertyId, startDate, endDate])
+  @@index([guestId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  propertyId String
+  guestId    String
+  bookingId  String
+  rating     Int
+  comment    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guest      User     @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+}
+
+model BlockedDate {
+  id             String   @id @default(cuid())
+  propertyId     String
+  startDate      DateTime
+  endDate        DateTime
+  reason         String?  @db.Text
+  isSystemLocked Boolean  @default(false) // true jika akibat sanksi Host Cancel (Host tidak bisa hapus)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, startDate, endDate])
+}
+
+model Dispute {
+  id                  String        @id @default(cuid())
+  bookingId           String        @unique
+  booking             Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reporterId          String        // User ID Tamu
+  reasonCategory      String        // "FAKE_LISTING" | "CLEANLINESS" | "AMENITY_BROKEN" | "SAFETY"
+  description         String        @db.Text
+  evidenceUrls        String[]      @default([]) // Array URL foto/video bukti dari tamu
+  hostResponse        String?       @db.Text
+  hostEvidenceUrls    String[]      @default([])
+  status              DisputeStatus @default(OPEN)
+  refundApprovedIdr   Int?          // Nominal yang dikembalikan ke tamu (jika partial/full)
+  payoutApprovedIdr   Int?          // Nominal yang diteruskan ke host
+  adminNotes          String?       @db.Text
+  resolvedByAdminId   String?
+  resolvedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([reporterId])
+  @@index([status])
+}
+
+model HostPenalty {
+  id          String   @id @default(cuid())
+  hostId      String
+  bookingId   String
+  amountIdr   Int      @default(250000) // Default Rp 250.000
+  reason      String
+  isDeducted  Boolean  @default(false)  // Akan dipotong pada pengajuan Payout berikutnya
+  createdAt   DateTime @default(now())
+
+  host        User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([hostId, isDeducted])
+  @@index([bookingId])
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model HostBankAccount {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bankCode      String   @default("BCA")
+  bankName      String
+  accountNumber String
+  accountHolder String
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id            String       @id @default(cuid())
+  userId        String
+  amount        Float
+  status        PayoutStatus @default(PENDING)
+  bankName      String
+  accountNumber String
+  accountHolder String
+  notes         String?      @db.Text
+  processedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
