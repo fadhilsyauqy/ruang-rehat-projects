@@ -37,6 +37,10 @@ export type AdminBookingItem = Prisma.BookingGetPayload<{
         name: true;
         email: true;
         phoneNumber: true;
+        address: true;
+        emergencyContactName: true;
+        emergencyContactPhone: true;
+        emergencyContactRelation: true;
       };
     };
   };

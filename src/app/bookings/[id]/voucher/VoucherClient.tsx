@@ -7,12 +7,13 @@ import {
   CheckCircle2, 
   MapPin, 
   Mail, 
-  Phone,
+  Phone, 
   ShieldCheck, 
   Clock, 
   Sparkles, 
   Calendar,
-  QrCode
+  QrCode,
+  Building2
 } from "lucide-react"
 import { formatPrice } from "@/lib/format"
 import { calculateStayNights, toCheckInDateTimeWIB, toCheckOutDateTimeWIB } from "@/lib/date-standards"
@@ -41,6 +42,11 @@ export default function VoucherClient({
 
   // Kode Tiket Unik Resmi
   const bookingCode = `RR-${booking.id.slice(-8).toUpperCase()}`
+
+  // Data Penagihan Korporat & Faktur Pajak Resmi (Billed To)
+  const hasCorporateBilling = Boolean(
+    guest?.billingTaxId || guest?.billingCompanyName || guest?.billingAddress
+  )
 
   const handlePrint = () => {
     window.print()
@@ -257,6 +263,60 @@ export default function VoucherClient({
               </div>
             </div>
 
+            {/* Informasi Faktur Pajak & Penagihan Korporat Resmi (Billed To) */}
+            {hasCorporateBilling && (
+              <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 print:bg-white print:border-gray-300 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-blue-200/60 print:border-gray-200 pb-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900 print:text-gray-900 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-blue-600 print:text-gray-700" />
+                    <span>
+                      {currentLang === "en"
+                        ? "Tax Invoice & Corporate Billing (Billed To)"
+                        : "Informasi Faktur Pajak & Penagihan Resmi (Billed To)"}
+                    </span>
+                  </span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 print:bg-gray-100 print:text-gray-800 print:border-gray-300">
+                    {currentLang === "en" ? "Official Business Expense" : "Faktur Pajak Sah"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-2.5 text-xs">
+                  {guest.billingCompanyName && (
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-gray-500 block">
+                        {currentLang === "en" ? "Company / Entity Name" : "Nama Entitas / Perusahaan"}
+                      </span>
+                      <p className="font-bold text-gray-900 leading-snug">
+                        {guest.billingCompanyName}
+                      </p>
+                    </div>
+                  )}
+
+                  {guest.billingTaxId && (
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-gray-500 block">
+                        {currentLang === "en" ? "NPWP / Tax Identification" : "NPWP (Tax ID)"}
+                      </span>
+                      <p className="font-mono font-bold text-blue-950 print:text-gray-900 leading-snug">
+                        {guest.billingTaxId}
+                      </p>
+                    </div>
+                  )}
+
+                  {guest.billingAddress && (
+                    <div className="sm:col-span-2 print:col-span-2 pt-1 border-t border-blue-150 print:border-gray-200">
+                      <span className="text-[9px] uppercase font-bold text-gray-500 block">
+                        {currentLang === "en" ? "Registered Billing Address" : "Alamat Resmi Penagihan"}
+                      </span>
+                      <p className="text-[11px] text-gray-700 leading-relaxed">
+                        {guest.billingAddress}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Syarat & Ketentuan Check-In */}
             <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs space-y-0.5">
               <p className="font-bold flex items-center gap-1 text-amber-950 text-[11px]">
@@ -279,25 +339,30 @@ export default function VoucherClient({
           </div>
 
           {/* KOLOM KANAN (4-5 Kolom): "Boarding Pass Stub" / Pelunasan, QR Code & Validasi */}
-          <div className="lg:col-span-4 print:col-span-4 p-4 sm:p-5 print:p-4 bg-gray-50/60 print:bg-white flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-4 print:col-span-4 p-4 sm:p-5 print:p-4 bg-gray-50/60 print:bg-white flex flex-col space-y-3 print:space-y-3 justify-start">
             
             {/* QR Code Verifikasi */}
-            <div className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 shadow-2xs">
-              <div className="w-24 h-24 bg-gray-900 rounded-lg flex items-center justify-center p-2">
+            <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-2xs flex flex-col items-center text-center space-y-2">
+              <div className="w-24 h-24 bg-gray-900 rounded-lg flex items-center justify-center p-2.5">
                 <QrCode className="w-full h-full text-white" />
               </div>
-              <div className="text-center">
+              <div>
                 <span className="text-[9px] font-mono font-bold text-gray-400 tracking-wider uppercase block">
                   DIGITAL PASS TOKEN
                 </span>
-                <span className="font-mono text-xs font-black text-gray-800 tracking-wider">
+                <span className="font-mono text-xs font-black text-gray-900 tracking-wider">
                   {bookingCode}
                 </span>
               </div>
+              <p className="text-[10px] text-gray-500 leading-snug">
+                {currentLang === "en"
+                  ? "Scan upon arrival for instant check-in verification"
+                  : "Pindai saat tiba di lokasi untuk verifikasi check-in"}
+              </p>
             </div>
 
             {/* Kotak Rincian Pembayaran */}
-            <div className="p-3.5 rounded-xl bg-white border border-gray-200 space-y-2">
+            <div className="p-3.5 rounded-xl bg-white border border-gray-200 space-y-2.5 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                   {currentLang === "en" ? "Payment Settlement" : "Status Pelunasan"}
@@ -307,30 +372,64 @@ export default function VoucherClient({
                 </span>
               </div>
 
-              <div className="text-xl font-black text-gray-900">
-                {formatPrice(booking.totalPriceIdr || (booking.totalPrice ? Math.round(booking.totalPrice * 18051) : 0), currentCurrency)}
+              <div>
+                <div className="text-xl font-black text-gray-900 leading-none">
+                  {formatPrice(booking.totalPriceIdr || (booking.totalPrice ? Math.round(booking.totalPrice * 18051) : 0), currentCurrency)}
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1 leading-tight">
+                  {currentLang === "en" 
+                    ? `${diffDays} ${diffDays === 1 ? "Night" : "Nights"} stay • Taxes & Platform fees included`
+                    : `Sewa ${diffDays} Malam • Termasuk pajak & biaya layanan`}
+                </p>
               </div>
 
-              <p className="text-[10px] text-gray-500 leading-tight">
-                {currentLang === "en" 
-                  ? `${diffDays} ${diffDays === 1 ? "Night" : "Nights"} stay • Taxes & Platform fees included`
-                  : `Sewa ${diffDays} Malam • Termasuk pajak & biaya layanan`}
-              </p>
+              <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>SafeStay Midtrans Escrow Active</span>
+                </div>
 
-              <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                <span>SafeStay Midtrans Escrow Active</span>
+                {hasCorporateBilling && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-blue-700 font-semibold print:text-gray-700 truncate">
+                    <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-600 print:text-gray-600" />
+                    <span className="truncate">
+                      {currentLang === "en" ? "Billed to:" : "Ditagihkan ke:"}{" "}
+                      {guest.billingCompanyName || guest.billingTaxId}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Platform Baseline SOP Reminder */}
-            <div className="p-3 rounded-xl bg-white/70 border border-gray-200 text-[10px] text-gray-500 space-y-1">
-              <div className="font-bold text-gray-700 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-rose-500" />
-                <span>Option A SOP Baseline</span>
+            {/* Kebijakan Operasional Standar (WIB) */}
+            <div className="p-3.5 rounded-xl bg-white border border-gray-200 text-[10px] text-gray-600 space-y-2 shadow-2xs">
+              <div className="font-bold text-gray-800 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs text-gray-900 font-bold">
+                  <Clock className="w-3.5 h-3.5 text-rose-500" />
+                  <span>
+                    {currentLang === "en" ? "Operating Policy (WIB)" : "Kebijakan Operasional (WIB)"}
+                  </span>
+                </span>
+                <span className="text-[9px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
+                  UTC+7
+                </span>
               </div>
-              <p className="leading-tight">
-                Check-in 14:00 • Check-out 12:00 • 2h Cleaning Buffer
+
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100 text-[10px]">
+                <div className="bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] uppercase font-bold text-gray-400 block">Check-in</span>
+                  <span className="font-bold text-gray-800">14:00 WIB</span>
+                </div>
+                <div className="bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] uppercase font-bold text-gray-400 block">Check-out</span>
+                  <span className="font-bold text-gray-800">12:00 WIB</span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-500 pt-0.5 leading-relaxed">
+                {currentLang === "en"
+                  ? "Standard 2-hour cleaning & sanitation buffer is guaranteed between stays."
+                  : "Jeda sanitasi & pembersihan standar 2 jam dijamin sebelum waktu check-in tamu."}
               </p>
             </div>
           </div>
