@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import Link from "next/link"
-import { Search } from "lucide-react"
+import { Search, ShieldAlert, Phone, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import { formatWibDate } from "@/lib/date-standards"
@@ -161,7 +161,8 @@ export default function BookingsTab({
                       {b.guest?.name || "Tamu"}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {b.guest?.email} · {b.guestsCount || 1} Tamu
+                      {b.guest?.email}
+                      {b.guest?.phoneNumber && ` · ${b.guest.phoneNumber}`} · {b.guestsCount || 1} Tamu
                     </p>
                   </div>
 
@@ -185,6 +186,55 @@ export default function BookingsTab({
                       {b.totalNights || 1} malam (
                       {formatPrice(nightlyRate, currentCurrency)}/malam)
                     </p>
+                  </div>
+                </div>
+
+                {/* Kontak Darurat & Alamat Domisili Tamu (Dispute & Incident Readiness) */}
+                <div className="rounded-2xl p-3 bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                      <span>Kontak Darurat:</span>
+                    </span>
+                    {b.guest?.emergencyContactName || b.guest?.emergencyContactPhone ? (
+                      <span className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
+                        <span>{b.guest.emergencyContactName || "-"}</span>
+                        {b.guest.emergencyContactRelation && (
+                          <span className="text-[11px] text-muted-foreground font-normal">
+                            ({b.guest.emergencyContactRelation})
+                          </span>
+                        )}
+                        {b.guest?.emergencyContactPhone && (
+                          <a
+                            href={`tel:${b.guest.emergencyContactPhone}`}
+                            className="text-purple-600 dark:text-purple-400 font-bold hover:underline inline-flex items-center gap-1 ml-1"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>{b.guest.emergencyContactPhone}</span>
+                          </a>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic text-[11px]">
+                        Belum diatur oleh tamu
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                      Domisili:
+                    </span>
+                    {b.guest?.address ? (
+                      <span className="font-semibold text-gray-900 dark:text-gray-100 max-w-xs truncate" title={b.guest.address}>
+                        {b.guest.address}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic text-[11px]">
+                        Belum disediakan
+                      </span>
+                    )}
                   </div>
                 </div>
 

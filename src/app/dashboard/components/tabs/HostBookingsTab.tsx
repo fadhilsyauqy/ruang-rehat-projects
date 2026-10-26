@@ -8,6 +8,9 @@ import {
   CalendarDays,
   User,
   Calendar,
+  Phone,
+  MapPin,
+  ShieldAlert,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatPrice, getBookingPriceIdr } from "@/lib/format"
@@ -187,6 +190,89 @@ export default function HostBookingsTab({
                   </div>
                 </div>
               </div>
+
+              {/* Kontak Darurat & Alamat Tamu (Hanya untuk Pesanan Terkonfirmasi / Selesai) */}
+              {(b.status === "CONFIRMED" || b.status === "COMPLETED" || b.paymentStatus === "PAID") && (
+                <div className="rounded-xl p-3 bg-gray-50/80 dark:bg-gray-800/50 border border-gray-150 dark:border-gray-800/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>
+                        {currentLang === "en"
+                          ? "Guest Safety & Incident Contact"
+                          : "Data Keselamatan & Kontak Darurat Tamu"}
+                      </span>
+                    </span>
+                    {b.guest?.phoneNumber && (
+                      <a
+                        href={`https://wa.me/${b.guest.phoneNumber.replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                        title={currentLang === "en" ? "Chat on WhatsApp" : "Hubungi via WhatsApp"}
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span>{b.guest.phoneNumber}</span>
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-gray-200/60 dark:border-gray-700/60">
+                    {/* Kontak Darurat Tamu */}
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-semibold text-gray-400 block uppercase">
+                        {currentLang === "en" ? "Emergency Contact:" : "Kontak Darurat:"}
+                      </span>
+                      {b.guest?.emergencyContactName || b.guest?.emergencyContactPhone ? (
+                        <div className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 flex-wrap">
+                          <span>{b.guest.emergencyContactName || "-"}</span>
+                          {b.guest.emergencyContactRelation && (
+                            <span className="text-[10px] text-muted-foreground font-normal">
+                              ({b.guest.emergencyContactRelation})
+                            </span>
+                          )}
+                          {b.guest.emergencyContactPhone && (
+                            <a
+                              href={`tel:${b.guest.emergencyContactPhone}`}
+                              className="text-rose-600 dark:text-rose-400 font-bold hover:underline inline-flex items-center gap-1"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{b.guest.emergencyContactPhone}</span>
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic text-[11px]">
+                          {currentLang === "en"
+                            ? "Not provided by guest"
+                            : "Belum disediakan oleh tamu"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Alamat Domisili Tamu */}
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-semibold text-gray-400 block uppercase">
+                        {currentLang === "en" ? "Residential Address:" : "Alamat Domisili:"}
+                      </span>
+                      {b.guest?.address ? (
+                        <div className="flex items-start gap-1 font-medium text-gray-700 dark:text-gray-300">
+                          <MapPin className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" />
+                          <span className="line-clamp-2" title={b.guest.address}>
+                            {b.guest.address}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic text-[11px]">
+                          {currentLang === "en"
+                            ? "Not provided"
+                            : "Belum disediakan"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Status and Actions */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">

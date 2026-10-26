@@ -48,7 +48,16 @@ export default async function AdminPage({
           select: { id: true, title: true, address: true, price: true, pricePerNight: true, hostId: true }
         },
         guest: {
-          select: { id: true, name: true, email: true, phoneNumber: true }
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNumber: true,
+            address: true,
+            emergencyContactName: true,
+            emergencyContactPhone: true,
+            emergencyContactRelation: true,
+          }
         }
       },
       orderBy: { createdAt: "desc" }

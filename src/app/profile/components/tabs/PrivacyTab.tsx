@@ -18,23 +18,23 @@ export default function PrivacyTab({
 }: PrivacyTabProps) {
   const [hideLastName, setHideLastName] = useState(user.hideLastNameReview ?? false)
   const [hideSearch, setHideSearch] = useState(user.hideSearchEngines ?? false)
-  const [readReceipts, setReadReceipts] = useState(user.readReceipts ?? true)
+  const [readReceipts] = useState(user.readReceipts ?? true)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [privacySuccessMsg, setPrivacySuccessMsg] = useState("")
   const [exportingData, setExportingData] = useState(false)
   const [showDeactivateModal, setShowDeactivateModal] = useState(false)
 
+  const isHost = user.role === "HOST" || user.role === "ADMIN" || (user.stats?.totalProperties ?? 0) > 0
+
   const handleTogglePrivacy = async (
-    key: "hideLastName" | "hideSearch" | "readReceipts",
+    key: "hideLastName" | "hideSearch",
     newVal: boolean
   ) => {
     const updatedLastName = key === "hideLastName" ? newVal : hideLastName
     const updatedSearch = key === "hideSearch" ? newVal : hideSearch
-    const updatedReceipts = key === "readReceipts" ? newVal : readReceipts
 
     if (key === "hideLastName") setHideLastName(newVal)
     if (key === "hideSearch") setHideSearch(newVal)
-    if (key === "readReceipts") setReadReceipts(newVal)
 
     setSavingPrivacy(true)
     setPrivacySuccessMsg("")
@@ -42,14 +42,15 @@ export default function PrivacyTab({
       await updatePrivacySettings({
         hideLastNameReview: updatedLastName,
         hideSearchEngines: updatedSearch,
-        readReceipts: updatedReceipts
+        readReceipts: readReceipts
       })
       setPrivacySuccessMsg(
         currentLang === "en" ? "Privacy settings updated" : "Pengaturan privasi berhasil disimpan"
       )
       setTimeout(() => setPrivacySuccessMsg(""), 3000)
-    } catch (err: any) {
-      alert(err.message || "Gagal memperbarui pengaturan privasi")
+    } catch (err: unknown) {
+      const error = err as Error
+      alert(error.message || "Gagal memperbarui pengaturan privasi")
     } finally {
       setSavingPrivacy(false)
     }
@@ -69,8 +70,9 @@ export default function PrivacyTab({
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-    } catch (err: any) {
-      alert(err.message || "Gagal mengunduh arsip data pribadi")
+    } catch (err: unknown) {
+      const error = err as Error
+      alert(error.message || "Gagal mengunduh arsip data pribadi")
     } finally {
       setExportingData(false)
     }
@@ -182,39 +184,48 @@ export default function PrivacyTab({
         </div>
 
         <div className="rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xs divide-y divide-gray-100 dark:divide-gray-800/60 overflow-hidden shadow-2xs">
-          {/* Row: Mesin Pencari */}
-          <div className="p-3.5 sm:p-4.5 transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/20">
-            <div className="flex items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 max-w-xl">
-                <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {currentLang === "en" ? "Include profile in search engines" : "Sertakan profil dan iklan dalam mesin pencari"}
-                </h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {currentLang === "en"
-                    ? "When turned on, search engines like Google and Bing can display your public profile or listings in search results."
-                    : "Saat diaktifkan, mesin pencari seperti Google dan Bing dapat menampilkan profil publik atau listing properti Anda di hasil pencarian web."}
-                </p>
-              </div>
+          {/* Row: Mesin Pencari (Hanya ditampilkan untuk Host yang memiliki listing publik) */}
+          {isHost && (
+            <div className="p-3.5 sm:p-4.5 transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/20">
+              <div className="flex items-start justify-between gap-3 sm:gap-4">
+                <div className="space-y-1 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                      {currentLang === "en"
+                        ? "Include accommodation listings in search engines"
+                        : "Sertakan listing properti dalam mesin pencari"}
+                    </h4>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/50">
+                      {currentLang === "en" ? "Host listing" : "Listing Tuan Rumah"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {currentLang === "en"
+                      ? "Allow search engines like Google and Bing to index and display your public accommodation listings in web search results to reach more guests."
+                      : "Izinkan mesin pencari seperti Google dan Bing untuk mengindeks dan menampilkan listing akomodasi publik Anda di hasil pencarian web guna menjangkau lebih banyak calon tamu."}
+                  </p>
+                </div>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!hideSearch}
-                disabled={savingPrivacy}
-                onClick={() => handleTogglePrivacy("hideSearch", !hideSearch)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 ${
-                  !hideSearch ? "bg-rose-500" : "bg-gray-300 dark:bg-gray-700"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                    !hideSearch ? "translate-x-5" : "translate-x-0"
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!hideSearch}
+                  disabled={savingPrivacy}
+                  onClick={() => handleTogglePrivacy("hideSearch", !hideSearch)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 ${
+                    !hideSearch ? "bg-rose-500" : "bg-gray-300 dark:bg-gray-700"
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                      !hideSearch ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Row: Format Nama pada Ulasan Publik */}
           <div className="p-3.5 sm:p-4.5 transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/20">
@@ -251,40 +262,6 @@ export default function PrivacyTab({
                   aria-hidden="true"
                   className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
                     hideLastName ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Row: Tanda Terima Telah Dibaca (Read Receipts) */}
-          <div className="p-3.5 sm:p-4.5 transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/20">
-            <div className="flex items-start justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 max-w-xl">
-                <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {currentLang === "en" ? "Read receipts" : "Tanda terima telah dibaca"}
-                </h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {currentLang === "en"
-                    ? "Let others know when you’ve read their booking messages and check-in guidance."
-                    : "Beri tahu lawan bicara saat Anda telah membaca pesan obrolan dan panduan check-in."}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                role="switch"
-                aria-checked={readReceipts}
-                disabled={savingPrivacy}
-                onClick={() => handleTogglePrivacy("readReceipts", !readReceipts)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 ${
-                  readReceipts ? "bg-rose-500" : "bg-gray-300 dark:bg-gray-700"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                    readReceipts ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
