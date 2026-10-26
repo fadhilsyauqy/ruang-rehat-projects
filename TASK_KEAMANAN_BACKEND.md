@@ -10,8 +10,8 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 
 | Fase / Area | Fokus Keamanan | Status | Jumlah Task |
 | :--- | :--- | :---: | :---: |
-| **Fase 1** | Hardcoded Secrets, Env Fallback, & Cron Security | `PENDING` | 3 Task |
-| **Fase 2** | Eliminasi Backdoor Pembayaran & Validasi Ketat Sisi Server | `PENDING` | 4 Task |
+| **Fase 1** | Hardcoded Secrets, Env Fallback, & Cron Security | `COMPLETED` | 3 Task |
+| **Fase 2** | Eliminasi Backdoor Pembayaran & Validasi Ketat Sisi Server | `COMPLETED` | 4 Task |
 | **Fase 3** | Anti Double-Booking, Concurrency Locking, & Sinkronisasi Kalender | `PENDING` | 3 Task |
 | **Fase 4** | Keamanan Webhook Midtrans, Timing-Safe Signature, & Idempotensi | `PENDING` | 3 Task |
 | **Fase 5** | Integritas Escrow, Atomic Payout, & Batasan Finansial Resolusi Sengketa | `PENDING` | 4 Task |
@@ -34,14 +34,14 @@ Menghilangkan seluruh API key, secret, dan kredensial asli yang tertulis langsun
 - `src/app/api/cron/release-escrow/route.ts` (Baris 14–17)
 
 ### Checklist Task:
-- [ ] **Task 1.1: Bersihkan Kredensial Hardcoded Cloudinary**
+- [x] **Task 1.1: Bersihkan Kredensial Hardcoded Cloudinary**
   - Hapus fallback live API Key dan Secret Cloudinary pada `src/app/api/upload/route.ts`.
   - Baca murni dari `process.env.CLOUDINARY_CLOUD_NAME`, `process.env.CLOUDINARY_API_KEY`, dan `process.env.CLOUDINARY_API_SECRET`.
   - Jika salah satu env tidak disetel, lemparkan error konfigurasi server yang aman (500) tanpa mengekspos detail kredensial ke client.
-- [ ] **Task 1.2: Hapus Fallback Dummy Key Midtrans**
+- [x] **Task 1.2: Hapus Fallback Dummy Key Midtrans**
   - Bersihkan string dummy `"SB-Mid-server-YOUR_DUMMY_KEY"` dan `"SB-Mid-client-YOUR_DUMMY_KEY"` pada `checkout/route.ts`, `midtrans/route.ts`, dan `src/app/layout.tsx`.
   - Pastikan modul server-side memverifikasi keberadaan `MIDTRANS_SERVER_KEY` secara eksplisit dan menolak eksekusi transaksi jika variabel belum disetel di lingkungan deployment.
-- [ ] **Task 1.3: Amankan Otorisasi Endpoint Cron Release Escrow**
+- [x] **Task 1.3: Amankan Otorisasi Endpoint Cron Release Escrow**
   - Perbaiki validasi `src/app/api/cron/release-escrow/route.ts:14-17`.
   - Wajibkan keberadaan `CRON_SECRET`. Jika `CRON_SECRET` tidak didefinisikan atau header `Authorization !== Bearer ${process.env.CRON_SECRET}`, tolak request dengan status `401 Unauthorized`. Cegah eksekusi publik tanpa token.
 
@@ -59,16 +59,16 @@ Menutup seluruh endpoint yang memungkinkan pembuatan booking terkonfirmasi atau 
 - `src/app/api/properties/blocked-dates/route.ts` (Baris 62–76)
 
 ### Checklist Task:
-- [ ] **Task 2.1: Nonaktifkan Endpoint Bypass `POST /api/bookings`**
+- [x] **Task 2.1: Nonaktifkan Endpoint Bypass `POST /api/bookings`**
   - Endpoint `POST /api/bookings` yang langsung membuat pesanan `status: 'CONFIRMED'` tanpa bayar harus dinonaktifkan atau dialihkan ke alur resmi `/api/payment/checkout`.
   - Kembalikan `405 Method Not Allowed` atau `400 Bad Request` yang menginstruksikan client untuk menggunakan alur checkout berbayar resmi.
-- [ ] **Task 2.2: Hapus Backdoor Konfirmasi Pembayaran `POST /api/payment/success`**
+- [x] **Task 2.2: Hapus Backdoor Konfirmasi Pembayaran `POST /api/payment/success`**
   - Endpoint `/api/payment/success` menerima `{ order_id }` tanpa auth/signature dan mengubah status booking menjadi `PAID` / `CONFIRMED`.
   - Hapus atau amankan endpoint ini: status pembayaran `PAID` hanya boleh diubah oleh webhook resmi Midtrans dengan validasi digital signature SHA-512.
-- [ ] **Task 2.3: Validasi Kuota Tamu Maksimal (`maxGuests`) Sisi Server**
+- [x] **Task 2.3: Validasi Kuota Tamu Maksimal (`maxGuests`) Sisi Server**
   - Pada `src/app/api/payment/checkout/route.ts`, ambil `guestCount` properti dalam `SELECT ... FOR UPDATE`.
   - Validasi bahwa `guestsCount >= 1` dan `guestsCount <= property.guestCount`. Jika tamu melebihi kapasitas properti, tolak dengan status `400 Bad Request`.
-- [ ] **Task 2.4: Validasi Tanggal Masa Lalu (Past Dates Validation)**
+- [x] **Task 2.4: Validasi Tanggal Masa Lalu (Past Dates Validation)**
   - Pada `checkout/route.ts` dan `properties/blocked-dates/route.ts`, validasi bahwa tanggal `startDate` tidak boleh berada di masa lalu (`startDate < hari ini dalam WIB`).
   - Cegah tamu dan host membuat reservasi atau memblokir tanggal surut.
 

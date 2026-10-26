@@ -669,7 +669,7 @@ Platform membagi hak akses ke dalam 3 hierarki peran (*Role*) dan 1 status verif
 | `POST` | `/api/properties` | User (Host) | Payload properti, fasilitas, foto | Mendaftarkan properti baru (status draft jika belum KYC). |
 | `GET` | `/api/properties/[id]` | Publik | `id` (Path param) | Detail lengkap akomodasi beserta riwayat ulasan terverifikasi. |
 | `POST` | `/api/payment/checkout` | Logged-in User | `propertyId, startDate, endDate, guests` | Penguncian tanggal (FOR UPDATE) & pembuatan token Midtrans Snap. |
-| `POST` | `/api/payment/success` | Logged-in User | `bookingId` | Konfirmasi pembayaran sisi klien & trigger pengiriman e-voucher. |
+| `POST` | `/api/payment/success` | *Disabled* | - | Dinonaktifkan (405) demi keamanan. Status pembayaran murni diproses via webhook Midtrans. |
 | `POST` | `/api/webhooks/midtrans` | Midtrans Server| Payload notifikasi Midtrans | Webhook resmi pembaruan status transaksi via signature SHA-512. |
 | `PATCH`| `/api/bookings/[id]/cancel` | Guest / Host | `cancelReason, bankDetails` | Pembatalan pesanan terstruktur (perhitungan penalti & refund). |
 | `GET` | `/api/host/payouts` | Host | - | Mengambil riwayat payout, saldo tertahan (HELD), dan saldo siap tarik. |
