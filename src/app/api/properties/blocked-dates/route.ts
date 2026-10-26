@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
-import { getWibDateString, toCheckInDateTimeWIB, toCheckOutDateTimeWIB } from "@/lib/date-standards"
+import { getWibDateString, toCheckInDateTimeWIB, toCheckOutDateTimeWIB, isPastDateWIB } from "@/lib/date-standards"
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -57,6 +57,10 @@ export async function POST(req: Request) {
 
     if (!property || property.hostId !== session.user.id) {
       return NextResponse.json({ error: "Anda tidak memiliki akses ke properti ini." }, { status: 403 })
+    }
+
+    if (isPastDateWIB(startDate)) {
+      return NextResponse.json({ error: "Tanggal mulai blokir tidak boleh berada di masa lalu (WIB)." }, { status: 400 })
     }
 
     const startYmd = getWibDateString(startDate)

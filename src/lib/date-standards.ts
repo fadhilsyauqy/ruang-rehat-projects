@@ -28,6 +28,15 @@ export function getWibDateString(date: Date | string): string {
 }
 
 /**
+ * Memeriksa apakah tanggal yang diberikan berada di masa lalu (sebelum hari ini dalam kalender WIB)
+ */
+export function isPastDateWIB(date: Date | string): boolean {
+  const targetYmd = getWibDateString(date)
+  const todayYmd = getWibDateString(new Date())
+  return targetYmd < todayYmd
+}
+
+/**
  * Menetapkan waktu check-in resmi: Pukul 14:00 WIB (07:00:00.000 UTC)
  */
 export function toCheckInDateTimeWIB(date: Date | string): Date {

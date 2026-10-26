@@ -1,23 +1,42 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
-import { toCheckInDateTimeWIB, toCheckOutDateTimeWIB, toEscrowReleaseDateTimeWIB, calculateStayNights } from "@/lib/date-standards"
+import { 
+  toCheckInDateTimeWIB, 
+  toCheckOutDateTimeWIB, 
+  toEscrowReleaseDateTimeWIB, 
+  calculateStayNights,
+  isPastDateWIB
+} from "@/lib/date-standards"
 import { getSystemSettings, calculateBookingFinancials } from "@/lib/settings"
 // @ts-ignore
 import midtransClient from "midtrans-client"
 
-// Konfigurasi Midtrans Snap API
-const snap = new midtransClient.Snap({
-  isProduction: false, // Sandbox mode
-  serverKey: process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-YOUR_DUMMY_KEY",
-  clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "SB-Mid-client-YOUR_DUMMY_KEY"
-})
+function getSnapClient() {
+  const serverKey = process.env.MIDTRANS_SERVER_KEY
+  if (!serverKey) {
+    throw new Error("MIDTRANS_SERVER_KEY is not configured on server")
+  }
+  return new midtransClient.Snap({
+    isProduction: false, // Sandbox mode
+    serverKey,
+    clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ""
+  })
+}
 
 export async function POST(req: Request) {
   const session = await auth()
   
   if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!process.env.MIDTRANS_SERVER_KEY) {
+    console.error("MIDTRANS_SERVER_KEY is missing from environment variables.")
+    return NextResponse.json(
+      { error: "Layanan pembayaran sedang tidak tersedia (kredensial gateway server belum disetel)." },
+      { status: 500 }
+    )
   }
 
   try {
@@ -28,6 +47,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    // Validasi Tanggal Masa Lalu (WIB)
+    if (isPastDateWIB(startDate)) {
+      return NextResponse.json(
+        { error: "Tanggal check-in tidak boleh berada di masa lalu (WIB)." },
+        { status: 400 }
+      )
+    }
+
     // Standarisasi Waktu Indonesia (WIB): Check-in 14:00 WIB, Check-out 12:00 WIB
     const start = toCheckInDateTimeWIB(startDate)
     const end = toCheckOutDateTimeWIB(endDate)
@@ -36,7 +63,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid dates" }, { status: 400 })
     }
 
-    // Standar Airbnb: Pencegahan Self-Booking (Host dilarang memesan properti miliknya sendiri)
+    const guestsCount = Number(guests) || 1
+    if (guestsCount < 1) {
+      return NextResponse.json({ error: "Jumlah tamu minimal adalah 1 orang." }, { status: 400 })
+    }
+
+    // Standar Airbnb: Pencegahan Self-Booking & Validasi Kuota Tamu Maksimal
     const propertyCheck = await prisma.property.findUnique({
       where: { id: propertyId },
       select: { 
@@ -45,6 +77,7 @@ export async function POST(req: Request) {
         hostId: true, 
         price: true, 
         cleaningFee: true,
+        maxGuests: true,
         cancellationPolicy: true 
       }
     })
@@ -60,6 +93,13 @@ export async function POST(req: Request) {
       )
     }
 
+    if (guestsCount > (propertyCheck.maxGuests || 1)) {
+      return NextResponse.json(
+        { error: `Jumlah tamu (${guestsCount}) melebihi batas kapasitas maksimal properti (${propertyCheck.maxGuests || 1} orang).` },
+        { status: 400 }
+      )
+    }
+
     // 1. Transaction Lock untuk Anti-Double Booking & Pembersihan Booking Kedaluwarsa
     const newBooking = await prisma.$transaction(async (tx) => {
       // Row-level lock pada properti
@@ -70,17 +110,27 @@ export async function POST(req: Request) {
         price: number, 
         pricePerNight: number,
         cleaningFee: number,
-        maxStayNights: number 
+        maxStayNights: number,
+        maxGuests: number
       }[]>`
-        SELECT id, title, "hostId", price, "pricePerNight", "cleaningFee", "maxStayNights" FROM "Property" WHERE id = ${propertyId} FOR UPDATE
+        SELECT id, title, "hostId", price, "pricePerNight", "cleaningFee", "maxStayNights", "maxGuests" FROM "Property" WHERE id = ${propertyId} FOR UPDATE
       `
 
       if (properties.length === 0) throw new Error("Property not found")
       if (properties[0].hostId === session.user!.id) {
-        throw new Error("Anda tidak dapat memesan properti milik Anda sendiri.")
+        const err: any = new Error("Anda tidak dapat memesan properti milik Anda sendiri.")
+        err.statusCode = 400
+        throw err
       }
       
       const prop = properties[0]
+
+      if (guestsCount > (prop.maxGuests || 1)) {
+        const err: any = new Error(`Jumlah tamu (${guestsCount}) melebihi batas kapasitas maksimal properti (${prop.maxGuests || 1} orang).`)
+        err.statusCode = 400
+        throw err
+      }
+
       const propertyTitle = prop.title
       const now = new Date()
 
@@ -93,7 +143,9 @@ export async function POST(req: Request) {
         ? Math.min(prop.maxStayNights, settings.maxStayNights) 
         : settings.maxStayNights
       if (totalNights < 1 || totalNights > effectiveMaxStay) {
-        throw new Error(`Durasi menginap maksimal adalah ${effectiveMaxStay} malam per transaksi`)
+        const err: any = new Error(`Durasi menginap maksimal adalah ${effectiveMaxStay} malam per transaksi`)
+        err.statusCode = 400
+        throw err
       }
 
       // Otomatis batalkan booking PENDING yang sudah melewati batas waktu (60 menit)
@@ -161,8 +213,6 @@ export async function POST(req: Request) {
 
       // Standar Waktu Indonesia (WIB): Rilis escrow 24 jam setelah jam check-in resmi (H+1 14:00 WIB)
       const escrowReleaseAt = toEscrowReleaseDateTimeWIB(start)
-
-      const guestsCount = Number(guests) || 1
 
       // Batas waktu pembayaran 60 menit dari sekarang
       const expiresAt = new Date(now.getTime() + 60 * 60 * 1000)
@@ -244,6 +294,7 @@ export async function POST(req: Request) {
       item_details: itemDetails
     }
 
+    const snap = getSnapClient()
     const transaction = await snap.createTransaction(parameter)
     const transactionToken = transaction.token
 
@@ -261,8 +312,22 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Checkout Error Log:", error);
-    if (error.message === "Dates are no longer available") {
+    if (error.statusCode) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
+    if (error.message === "Dates are no longer available" || error.message?.includes("Rentang tanggal")) {
       return NextResponse.json({ error: error.message }, { status: 409 })
+    }
+    if (error.message === "Property not found") {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
+    if (
+      error.message?.includes("melebihi") || 
+      error.message?.includes("maksimal") || 
+      error.message?.includes("minimal") ||
+      error.message?.includes("milik Anda sendiri")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
     }
     return NextResponse.json({ error: error.message || "Checkout failed" }, { status: 500 })
   }
