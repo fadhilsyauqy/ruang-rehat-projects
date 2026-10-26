@@ -282,6 +282,8 @@ export async function POST(req: Request) {
       }
     ]
 
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+
     const parameter = {
       transaction_details: {
         order_id: newBooking.booking.id, // Gunakan ID Booking sebagai Order ID
@@ -291,17 +293,25 @@ export async function POST(req: Request) {
         first_name: session.user.name || "Tamu",
         email: session.user.email || "tamu@ruangrehat.com",
       },
-      item_details: itemDetails
+      item_details: itemDetails,
+      callbacks: {
+        finish: `${baseUrl}/dashboard`,
+        error: `${baseUrl}/dashboard`,
+        pending: `${baseUrl}/dashboard`
+      }
     }
 
     const snap = getSnapClient()
     const transaction = await snap.createTransaction(parameter)
     const transactionToken = transaction.token
 
-    // Simpan token ke database untuk referensi
+    // Simpan token ke database untuk referensi dan pastikan midtransOrderId konsisten dengan booking.id
     await prisma.booking.update({
       where: { id: newBooking.booking.id },
-      data: { midtransToken: transactionToken }
+      data: { 
+        midtransToken: transactionToken,
+        midtransOrderId: newBooking.booking.id
+      }
     })
     
     return NextResponse.json({ 

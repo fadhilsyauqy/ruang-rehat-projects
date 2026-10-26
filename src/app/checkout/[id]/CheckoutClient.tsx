@@ -65,10 +65,19 @@ export default function CheckoutClient({
           embedId: 'snap-container',
           onSuccess: async function () {
             setIsPaid(true)
+            try {
+              await fetch('/api/payment/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId: booking.id }),
+              })
+            } catch (syncErr) {
+              console.error('Auto sync error:', syncErr)
+            }
             setTimeout(() => {
               router.push('/dashboard')
               router.refresh()
-            }, 3000)
+            }, 2500)
           },
           onPending: function () {
             router.push('/dashboard')

@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
-import { AlertTriangle, ShieldAlert } from "lucide-react"
+import { AlertTriangle, ShieldAlert, RotateCw } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export default function HostBookingActions({ 
   booking, 
@@ -16,9 +17,31 @@ export default function HostBookingActions({
   currentLang?: string 
 }) {
   const [loading, setLoading] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [reason, setReason] = useState("")
   const [open, setOpen] = useState(false)
   const router = useRouter()
+
+  const handleSyncStatus = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch("/api/payment/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: booking.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || (currentLang === "en" ? "Failed to verify status" : "Gagal memverifikasi status"))
+      alert(data.message)
+      if (data.updated) {
+        router.refresh()
+      }
+    } catch (e: any) {
+      alert(e.message || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran"))
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleCancel = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +71,21 @@ export default function HostBookingActions({
   const isPaid = booking.paymentStatus === "PAID"
 
   return (
-    <div>
+    <div className="flex items-center gap-3">
+      {/* Tombol Kroscek Status Pembayaran untuk Host jika tamu masih pending */}
+      {booking.paymentStatus === "PENDING" && (
+        <button
+          type="button"
+          onClick={handleSyncStatus}
+          disabled={syncing}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-50"
+          title={currentLang === "en" ? "Check payment status with Midtrans" : "Kroscek status pembayaran tamu dengan Midtrans"}
+        >
+          <RotateCw className={cn("w-3 h-3", syncing && "animate-spin")} />
+          <span>{syncing ? (currentLang === "en" ? "Checking..." : "Memeriksa...") : (currentLang === "en" ? "Check Status" : "Cek Status")}</span>
+        </button>
+      )}
+
       {/* Tombol Batalkan Pesanan Tamu (jika belum selesai/batal) */}
       {!isCancelledOrCompleted && (
         <Dialog open={open} onOpenChange={setOpen}>
