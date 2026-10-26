@@ -42,12 +42,13 @@ export function checkRangeOverlap(
 export function calculateBookingPricing(
   diffDays: number,
   basePricePerNight: number,
-  cleaningFee: number
+  cleaningFee: number,
+  guestServiceFeePct: number = 10
 ) {
   const nightsPriceIdr = diffDays * basePricePerNight
   const cleaningFeeIdr = cleaningFee || 0
   const grossStayIdr = nightsPriceIdr + cleaningFeeIdr
-  const guestServiceFeeIdr = Math.round(grossStayIdr * 0.1)
+  const guestServiceFeeIdr = Math.round(grossStayIdr * (guestServiceFeePct / 100))
   const totalPriceIdr = grossStayIdr + guestServiceFeeIdr
 
   return {

@@ -17,6 +17,9 @@ export const DEFAULT_HOST_FEE_MULTIPLIER = 0.97;   // (100% - 3%) = 97% yang dit
 // Denda pembatalan sepihak oleh Host (Rp 250.000)
 export const DEFAULT_HOST_CANCEL_PENALTY_IDR = 250000;
 
+// Batasan Durasi Menginap Default (Malam)
+export const DEFAULT_MAX_STAY_NIGHTS = 28;
+
 // Default System Setting Identifier
 export const SYSTEM_SETTING_GLOBAL_ID = "global";
 
