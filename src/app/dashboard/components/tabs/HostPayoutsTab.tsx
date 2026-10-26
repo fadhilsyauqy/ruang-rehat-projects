@@ -136,7 +136,10 @@ export default function HostPayoutsTab({
 
       onPayoutCreated(data.payout)
       setIsConfirmModalOpen(false)
-      setPayoutSuccessMsg("Permintaan penarikan dana berhasil diproses.")
+      setPayoutSuccessMsg(
+        data.message ||
+          "Permintaan penarikan dana berhasil diajukan dan sedang menunggu verifikasi admin."
+      )
       setCompletedReceipt({
         ...data.payout,
         displayAmount: formatPrice(amountInIdr, currentCurrency),

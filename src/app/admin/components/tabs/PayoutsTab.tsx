@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, ShieldCheck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { AdminPayoutItem } from "@/types"
+import PayoutConfirmDialog from "../dialogs/PayoutConfirmDialog"
 
 export interface PayoutsTabProps {
   initialPayouts: AdminPayoutItem[]
@@ -19,24 +20,41 @@ export default function PayoutsTab({
   currentLang = "id",
 }: PayoutsTabProps) {
   const router = useRouter()
+  const [payoutsList, setPayoutsList] = useState<AdminPayoutItem[]>(initialPayouts)
   const [userSearch, setUserSearch] = useState("")
   const [payoutStatusFilter, setPayoutStatusFilter] = useState("ALL")
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const [selectedPayoutForApproval, setSelectedPayoutForApproval] =
+    useState<AdminPayoutItem | null>(null)
+
+  useEffect(() => {
+    setPayoutsList(initialPayouts)
+  }, [initialPayouts])
 
   const handleUpdatePayout = async (
     payoutId: string,
     status: "COMPLETED" | "FAILED" | "PROCESSING",
-    notes?: string
+    notes?: string,
+    referenceNumber?: string
   ) => {
     setLoadingAction(`payout-${payoutId}`)
     try {
       const res = await fetch(`/api/admin/payouts/${payoutId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, notes }),
+        body: JSON.stringify({ status, notes, referenceNumber }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Gagal memperbarui status payout")
+
+      if (data.payout) {
+        setPayoutsList((prev) =>
+          prev.map((p) =>
+            p.id === data.payout.id ? { ...p, ...data.payout } : p
+          )
+        )
+      }
+      setSelectedPayoutForApproval(null)
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
@@ -46,7 +64,7 @@ export default function PayoutsTab({
     }
   }
 
-  const filteredPayouts = initialPayouts.filter((p) => {
+  const filteredPayouts = payoutsList.filter((p) => {
     if (payoutStatusFilter !== "ALL" && p.status !== payoutStatusFilter)
       return false
     const q = userSearch.toLowerCase()
@@ -54,7 +72,8 @@ export default function PayoutsTab({
       p.user?.name?.toLowerCase().includes(q) ||
       p.user?.email?.toLowerCase().includes(q) ||
       p.bankName?.toLowerCase().includes(q) ||
-      p.accountNumber?.toLowerCase().includes(q)
+      p.accountNumber?.toLowerCase().includes(q) ||
+      p.notes?.toLowerCase().includes(q)
     )
   })
 
@@ -162,8 +181,24 @@ export default function PayoutsTab({
                 </div>
 
                 {payout.notes && (
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 italic bg-gray-50 dark:bg-gray-800/40 p-2 rounded-xl max-w-xl">
-                    Catatan: &ldquo;{payout.notes}&rdquo;
+                  <div className="flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-150 dark:border-gray-800 max-w-xl">
+                    <span className="font-bold text-gray-700 dark:text-gray-200 shrink-0">
+                      Catatan / No. Ref:
+                    </span>
+                    <span className="font-mono">{payout.notes}</span>
+                  </div>
+                )}
+
+                {payout.status === "COMPLETED" && payout.processedAt && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>
+                      Selesai Ditransfer:{" "}
+                      {new Date(payout.processedAt).toLocaleString(
+                        currentLang === "en" ? "en-US" : "id-ID",
+                        { dateStyle: "medium", timeStyle: "short" }
+                      )}
+                    </span>
                   </p>
                 )}
               </div>
@@ -179,48 +214,60 @@ export default function PayoutsTab({
                   </h3>
                 </div>
 
-                {/* Action buttons */}
+                {/* Action buttons - Hanya aktif untuk status PENDING & PROCESSING */}
                 <div className="flex items-center gap-2">
-                  {payout.status !== "COMPLETED" && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleUpdatePayout(payout.id, "COMPLETED")}
-                      disabled={loadingAction === `payout-${payout.id}`}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold h-8 cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                      Setujui & Selesai
-                    </Button>
+                  {(payout.status === "PENDING" || payout.status === "PROCESSING") && (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedPayoutForApproval(payout)}
+                        disabled={loadingAction === `payout-${payout.id}`}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold h-8 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                        Setujui & Selesai
+                      </Button>
+
+                      {payout.status === "PENDING" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUpdatePayout(payout.id, "PROCESSING")}
+                          disabled={loadingAction === `payout-${payout.id}`}
+                          className="border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-semibold h-8 cursor-pointer"
+                        >
+                          Tandai Proses
+                        </Button>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const reason = prompt(
+                            "Masukkan alasan penolakan/pembekuan pencairan dana:"
+                          )
+                          if (reason)
+                            handleUpdatePayout(payout.id, "FAILED", reason)
+                        }}
+                        disabled={loadingAction === `payout-${payout.id}`}
+                        className="text-rose-600 hover:bg-rose-50 text-xs h-8 cursor-pointer"
+                      >
+                        Tolak
+                      </Button>
+                    </>
                   )}
 
-                  {payout.status === "PENDING" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleUpdatePayout(payout.id, "PROCESSING")}
-                      disabled={loadingAction === `payout-${payout.id}`}
-                      className="border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-semibold h-8 cursor-pointer"
-                    >
-                      Tandai Proses
-                    </Button>
+                  {payout.status === "COMPLETED" && (
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200/50">
+                      ✓ Transaksi Selesai
+                    </span>
                   )}
 
-                  {payout.status !== "FAILED" && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        const reason = prompt(
-                          "Masukkan alasan penolakan/pembekuan pencairan dana:"
-                        )
-                        if (reason)
-                          handleUpdatePayout(payout.id, "FAILED", reason)
-                      }}
-                      disabled={loadingAction === `payout-${payout.id}`}
-                      className="text-rose-600 hover:bg-rose-50 text-xs h-8 cursor-pointer"
-                    >
-                      Tolak
-                    </Button>
+                  {payout.status === "FAILED" && (
+                    <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-3 py-1 rounded-full border border-rose-200/50">
+                      ✗ Permohonan Ditolak
+                    </span>
                   )}
                 </div>
               </div>
@@ -228,6 +275,21 @@ export default function PayoutsTab({
           ))
         )}
       </div>
+
+      {/* Dialog Konfirmasi Pencairan Dana dengan Nomor Referensi Bank */}
+      <PayoutConfirmDialog
+        payout={selectedPayoutForApproval}
+        onClose={() => setSelectedPayoutForApproval(null)}
+        onConfirmPayout={async (payoutId, referenceNumber, notes) => {
+          await handleUpdatePayout(payoutId, "COMPLETED", notes, referenceNumber)
+        }}
+        loading={Boolean(
+          selectedPayoutForApproval &&
+            loadingAction === `payout-${selectedPayoutForApproval.id}`
+        )}
+        currentCurrency={currentCurrency}
+        currentLang={currentLang}
+      />
     </div>
   )
 }

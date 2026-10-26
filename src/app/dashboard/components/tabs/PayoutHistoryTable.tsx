@@ -73,20 +73,47 @@ export default function PayoutHistoryTable({
                       {formatPrice(p.amount, currentCurrency)}
                     </td>
                     <td className="px-4 py-3">
-                      {p.status === "COMPLETED" && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                          {t.payoutStatusCompleted}
+                      {p.status === "PENDING" && (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                          {t.payoutStatusPending || "Menunggu"}
                         </span>
                       )}
                       {p.status === "PROCESSING" && (
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                          {t.payoutStatusProcessing}
+                          {t.payoutStatusProcessing || "Diproses"}
                         </span>
                       )}
+                      {p.status === "COMPLETED" && (
+                        <div className="space-y-1">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 inline-block">
+                            {t.payoutStatusCompleted || "Berhasil"}
+                          </span>
+                          {p.notes && p.notes.includes("[No. Ref:") && (
+                            <p className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                              {p.notes.match(/\[No\. Ref: [^\]]+\]/)?.[0]}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {p.status === "FAILED" && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
-                          {t.payoutStatusFailed}
-                        </span>
+                        <div className="space-y-1 max-w-xs">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 inline-block">
+                            {t.payoutStatusFailed || "Gagal"}
+                          </span>
+                          {p.notes && (
+                            <div className="text-[11px] text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 rounded-lg p-1.5 leading-snug">
+                              <span className="font-semibold">Alasan: </span>
+                              <span>
+                                {p.notes.includes("[Admin]:")
+                                  ? p.notes.split("[Admin]:")[1]?.trim()
+                                  : p.notes}
+                              </span>
+                              <span className="block text-[10px] text-rose-500/80 mt-0.5">
+                                (Saldo telah dikembalikan)
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

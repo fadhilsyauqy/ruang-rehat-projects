@@ -168,22 +168,22 @@ export async function POST(req: Request) {
       })
     }
 
-    // 4. Catat transaksi penarikan dana
+    // 4. Catat transaksi penarikan dana dengan status PENDING (Menunggu Verifikasi Admin)
     const payout = await prisma.payout.create({
       data: {
         userId: session.user.id,
         amount: withdrawAmount,
-        status: "COMPLETED", // Disimulasikan langsung terproses
+        status: "PENDING",
         bankName: bankAccount.bankName,
         accountNumber: bankAccount.accountNumber,
         accountHolder: bankAccount.accountHolder,
-        notes: notes || "Pencairan dana hasil sewa reguler (Escrow Released)",
-        processedAt: new Date()
+        notes: notes || "Permohonan pencairan dana hasil sewa reguler (Escrow Released)",
+        processedAt: null
       }
     })
 
     return NextResponse.json({
-      message: "Penarikan dana berhasil diproses ke rekening Anda",
+      message: "Permohonan penarikan dana berhasil diajukan dan sedang menunggu verifikasi admin.",
       payout,
       remainingBalanceIdr: availableBalanceIdr - withdrawAmount
     })

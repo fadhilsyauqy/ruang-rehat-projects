@@ -30,14 +30,31 @@ export default function PayoutReceiptDialog({
         </div>
 
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full">
-            {currentLang === "en" ? "Transfer Successfully Processed" : "Transfer Berhasil Diproses"}
+          <span
+            className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+              receipt.status === "PENDING"
+                ? "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60"
+                : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60"
+            }`}
+          >
+            {receipt.status === "PENDING"
+              ? currentLang === "en"
+                ? "Withdrawal Request Submitted"
+                : "Permohonan Penarikan Diajukan"
+              : currentLang === "en"
+              ? "Transfer Successfully Processed"
+              : "Transfer Berhasil Diproses"}
           </span>
           <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100 mt-3">
             {receipt.displayAmount}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            {t.payoutSuccessCompletedNotice || "Dana telah berhasil dikirimkan ke rekening bank Anda."}
+            {receipt.status === "PENDING"
+              ? currentLang === "en"
+                ? "Your withdrawal request has been received and is awaiting Admin verification and manual bank transfer."
+                : "Permohonan penarikan dana Anda telah diterima dan sedang menunggu verifikasi serta transfer manual oleh Admin."
+              : t.payoutSuccessCompletedNotice ||
+                "Dana telah berhasil dikirimkan ke rekening bank Anda."}
           </p>
         </div>
 
@@ -73,7 +90,17 @@ export default function PayoutReceiptDialog({
           </div>
           <div className="flex justify-between text-muted-foreground border-t border-gray-200 dark:border-gray-700 pt-2">
             <span>Status:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">SELESAI (COMPLETED)</span>
+            <span
+              className={`font-bold ${
+                receipt.status === "PENDING"
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {receipt.status === "PENDING"
+                ? "MENUNGGU VERIFIKASI (PENDING)"
+                : "SELESAI (COMPLETED)"}
+            </span>
           </div>
         </div>
 

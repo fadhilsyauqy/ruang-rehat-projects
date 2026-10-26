@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sendHostPayoutApprovedEmail } from "@/lib/notifications"
 
 export async function PATCH(
   req: Request,
@@ -13,7 +14,8 @@ export async function PATCH(
     }
 
     const resolvedParams = await params
-    const { status, notes } = await req.json()
+    const body = await req.json()
+    const { status, notes, referenceNumber } = body
 
     if (!status || !["PENDING", "PROCESSING", "COMPLETED", "FAILED"].includes(status)) {
       return NextResponse.json({ error: "Invalid payout status" }, { status: 400 })
@@ -21,31 +23,116 @@ export async function PATCH(
 
     const existingPayout = await prisma.payout.findUnique({
       where: { id: resolvedParams.id },
-      include: { user: { select: { id: true, name: true, email: true } } }
+      include: { 
+        user: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true, 
+            notifyHostPayout: true 
+          } 
+        } 
+      }
     })
 
     if (!existingPayout) {
       return NextResponse.json({ error: "Payout not found" }, { status: 404 })
     }
 
-    const updateData: any = {
-      status: status as any
+    // Lindungi status terminal COMPLETED dari pembatalan (mencegah double withdrawal)
+    if (existingPayout.status === "COMPLETED") {
+      return NextResponse.json(
+        { error: "Pencairan dana yang telah berstatus COMPLETED tidak dapat diubah atau dibatalkan karena dana telah ditransfer ke bank host." },
+        { status: 400 }
+      )
     }
 
-    if (notes) {
+    // Lindungi status terminal FAILED dari persetujuan ulang
+    if (existingPayout.status === "FAILED") {
+      return NextResponse.json(
+        { error: "Pencairan dana yang telah Ditolak (FAILED) tidak dapat diubah kembali karena dana telah otomatis dikembalikan ke saldo host. Silakan minta host untuk mengajukan permohonan baru." },
+        { status: 400 }
+      )
+    }
+
+    const updateData: {
+      status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+      notes?: string;
+      processedAt?: Date;
+    } = {
+      status: status as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+    }
+
+    const cleanRef = typeof referenceNumber === "string" ? referenceNumber.trim() : ""
+    const cleanNotes = typeof notes === "string" ? notes.trim() : ""
+
+    if (status === "COMPLETED" && !cleanRef) {
+      return NextResponse.json(
+        { error: "Nomor referensi transfer / mutasi bank wajib diisi untuk menyelesaikan pencairan dana." },
+        { status: 400 }
+      )
+    }
+
+    let noteContent = ""
+    if (cleanRef && cleanNotes) {
+      noteContent = `[No. Ref: ${cleanRef}] ${cleanNotes}`
+    } else if (cleanRef) {
+      noteContent = `[No. Ref: ${cleanRef}]`
+    } else if (cleanNotes) {
+      noteContent = cleanNotes
+    }
+
+    if (noteContent) {
       updateData.notes = existingPayout.notes 
-        ? `${existingPayout.notes} | [Admin]: ${notes}` 
-        : `[Admin]: ${notes}`
+        ? `${existingPayout.notes} | [Admin]: ${noteContent}` 
+        : `[Admin]: ${noteContent}`
     }
 
+    const processedAt = status === "COMPLETED" ? new Date() : (existingPayout.processedAt || undefined)
     if (status === "COMPLETED") {
-      updateData.processedAt = new Date()
+      updateData.processedAt = processedAt
     }
 
     const updatedPayout = await prisma.payout.update({
       where: { id: resolvedParams.id },
-      data: updateData
+      data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNumber: true,
+          }
+        }
+      }
     })
+
+    // Kirim notifikasi email ke Host jika status menjadi COMPLETED dan notifyHostPayout aktif
+    if (
+      status === "COMPLETED" &&
+      existingPayout.user?.email &&
+      existingPayout.user.notifyHostPayout !== false
+    ) {
+      const refToUse =
+        cleanRef ||
+        (cleanNotes.startsWith("REF-") ? cleanNotes : null) ||
+        null
+
+      sendHostPayoutApprovedEmail({
+        hostEmail: existingPayout.user.email,
+        hostName: existingPayout.user.name,
+        amountIdr: existingPayout.amount,
+        bankName: existingPayout.bankName,
+        accountNumber: existingPayout.accountNumber,
+        accountHolder: existingPayout.accountHolder,
+        referenceNumber: refToUse,
+        payoutId: existingPayout.id,
+        processedAt: processedAt || new Date()
+      }).catch((err) => {
+        console.error("[sendHostPayoutApprovedEmail Error]:", err)
+      })
+    }
 
     return NextResponse.json({
       message: `Status payout #${resolvedParams.id} diubah menjadi ${status}`,
