@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import crypto from "crypto"
 
 /**
  * Hourly Cron Worker: Otomatisasi Pelepasan Dana Escrow
@@ -11,8 +12,16 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get("authorization")
     const cronSecret = process.env.CRON_SECRET
 
-    // Jika CRON_SECRET terkonfigurasi, validasi header authorization (Vercel Cron)
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // Wajibkan CRON_SECRET terdefinisi di lingkungan server dan token otorisasi valid
+    if (!cronSecret || !authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const token = authHeader.replace(/^Bearer\s+/, "")
+    const tokenBuffer = Buffer.from(token)
+    const secretBuffer = Buffer.from(cronSecret)
+
+    if (tokenBuffer.length !== secretBuffer.length || !crypto.timingSafeEqual(tokenBuffer, secretBuffer)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

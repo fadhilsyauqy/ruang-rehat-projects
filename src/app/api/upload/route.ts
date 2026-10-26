@@ -2,19 +2,31 @@ import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { auth } from "@/auth";
 
-// Konfigurasi Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "ds1guk1al",
-  api_key: process.env.CLOUDINARY_API_KEY || "853965565551944",
-  api_secret: process.env.CLOUDINARY_API_SECRET || "8C2T17LzP7mQ55b_78x6L056B-8",
-});
-
 export async function POST(req: Request) {
   const session = await auth();
   
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    console.error("Cloudinary credentials are not configured in environment variables.");
+    return NextResponse.json(
+      { error: "Layanan upload file sedang tidak dapat digunakan (konfigurasi server tidak lengkap)." },
+      { status: 500 }
+    );
+  }
+
+  // Konfigurasi Cloudinary murni dari environment variables
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
 
   try {
     const formData = await req.formData();

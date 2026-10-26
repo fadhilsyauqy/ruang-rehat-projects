@@ -34,7 +34,7 @@ export default function RootLayout({
       >
         <Script
           src="https://app.sandbox.midtrans.com/snap/snap.js"
-          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "SB-Mid-client-YOUR_DUMMY_KEY"}
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ""}
           strategy="afterInteractive"
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
