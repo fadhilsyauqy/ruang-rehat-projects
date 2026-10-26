@@ -127,14 +127,18 @@ RESEND_API_KEY="re_xxxx"
 EMAIL_FROM="Ruang Rehat <onboarding@resend.dev>"
 ```
 
-### 4. Sinkronisasi Skema Database
-Generate Prisma Client dan dorong skema relasional ke database Anda:
+### 4. Sinkronisasi Skema Database & Seeding
+Generate Prisma Client, dorong skema relasional, dan isi data awal (*seed*):
 ```bash
 # Sinkronkan skema database
 npx prisma db push
 
 # Generate client Prisma terbaru
 npx prisma generate
+
+# Isi data awal / demo data (Admin, Hosts terverifikasi, Tamu, dan Akomodasi contoh)
+pnpm db:seed
+# atau: npx prisma db seed
 ```
 
 ### 5. Jalankan Server Pengembangan
