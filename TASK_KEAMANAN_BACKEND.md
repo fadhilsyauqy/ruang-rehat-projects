@@ -12,8 +12,8 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 | :--- | :--- | :---: | :---: |
 | **Fase 1** | Hardcoded Secrets, Env Fallback, & Cron Security | `COMPLETED` | 3 Task |
 | **Fase 2** | Eliminasi Backdoor Pembayaran & Validasi Ketat Sisi Server | `COMPLETED` | 4 Task |
-| **Fase 3** | Anti Double-Booking, Concurrency Locking, & Sinkronisasi Kalender | `PENDING` | 3 Task |
-| **Fase 4** | Keamanan Webhook Midtrans, Timing-Safe Signature, & Idempotensi | `PENDING` | 3 Task |
+| **Fase 3** | Anti Double-Booking, Concurrency Locking, & Sinkronisasi Kalender | `COMPLETED` | 3 Task |
+| **Fase 4** | Keamanan Webhook Midtrans, Timing-Safe Signature, & Idempotensi | `COMPLETED` | 3 Task |
 | **Fase 5** | Integritas Escrow, Atomic Payout, & Batasan Finansial Resolusi Sengketa | `PENDING` | 4 Task |
 | **Fase 6** | Otorisasi Ketat Server-Side (RBAC), Anti-IDOR, & Mass-Assignment Guard | `PENDING` | 3 Task |
 | **Fase 7** | Kepatuhan UU PDP No. 27/2022 & Eliminasi Data Leak pada RSC Payload | `PENDING` | 3 Task |
@@ -85,14 +85,14 @@ Mencegah terjadinya double-booking akibat request konkruen di detik yang sama, m
 - `src/app/page.tsx` (Baris 58–72)
 
 ### Checklist Task:
-- [ ] **Task 3.1: Atomic Transaction & Lock pada Penarikan Dana Host (`POST /api/host/payouts`)**
+- [x] **Task 3.1: Atomic Transaction & Lock pada Penarikan Dana Host (`POST /api/host/payouts`)**
   - Bungkus seluruh kalkulasi saldo yang dapat ditarik (`availableBalanceIdr`), pengecekan penalti, dan pembuatan record penarikan (`tx.payout.create`) dalam **satu Prisma Interactive Transaction atomik**.
   - Terapkan locking pada level user/payout atau serializable isolation untuk mencegah *double withdrawal* saat host mengirim beberapa request bersamaan.
   - Pindahkan mutasi `isDeducted: true` pada `hostPenalty` ke dalam transaksi yang sama sehingga jika pembuatan payout gagal, penalti tidak terpotong sepihak.
-- [ ] **Task 3.2: Validasi Bentrok Reservasi saat Host Memblokir Tanggal**
+- [x] **Task 3.2: Validasi Bentrok Reservasi saat Host Memblokir Tanggal**
   - Pada `POST /api/properties/blocked-dates`, periksa apakah terdapat booking aktif (`status !== 'CANCELLED'` dan `paymentStatus !== 'FAILED'`) yang beririsan dengan tanggal yang ingin diblokir host.
   - Jika ada reservasi aktif, tolak aksi pemblokiran dengan pesan informatif agar host tidak memblokir tanggal yang sudah dibayar tamu.
-- [ ] **Task 3.3: Sinkronkan Pencarian Homepage (`page.tsx`) dengan `BlockedDate`**
+- [x] **Task 3.3: Sinkronkan Pencarian Homepage (`page.tsx`) dengan `BlockedDate`**
   - Perbarui filter `whereClause` pencarian tanggal di `src/app/page.tsx`.
   - Tambahkan kondisi pengecualian properti jika terdapat record pada tabel `BlockedDate` yang beririsan dengan `checkIn` dan `checkOut` tamu (`blockedDates: { none: { startDate: { lt: checkOutDate }, endDate: { gt: checkInDate } } }`).
 
@@ -107,12 +107,12 @@ Menjamin bahwa notifikasi pembayaran dari Midtrans diverifikasi secara kriptogra
 - `src/app/api/webhooks/midtrans/route.ts` (Baris 1–69)
 
 ### Checklist Task:
-- [ ] **Task 4.1: Gunakan `crypto.timingSafeEqual` untuk Verifikasi Signature**
+- [x] **Task 4.1: Gunakan `crypto.timingSafeEqual` untuk Verifikasi Signature**
   - Ganti perbandingan string biasa `calculatedSignature !== signature_key` dengan `crypto.timingSafeEqual(Buffer.from(calculatedSignature), Buffer.from(signature_key))` dengan penanganan panjang buffer yang aman untuk menangkal celah *timing attack*.
-- [ ] **Task 4.2: Terapkan Prinsip Idempotensi pada Pemrosesan Webhook**
+- [x] **Task 4.2: Terapkan Prinsip Idempotensi pada Pemrosesan Webhook**
   - Periksa status booking saat ini sebelum melakukan update.
   - Jika booking sudah berstatus `paymentStatus === 'PAID'` dan status baru dari Midtrans adalah `PAID`, lewati pembaruan database dan kembalikan respon `200 OK` secara langsung (idempoten).
-- [ ] **Task 4.3: Proteksi Status Terminal & Status Escrow dari Timpaan Webhook**
+- [x] **Task 4.3: Proteksi Status Terminal & Status Escrow dari Timpaan Webhook**
   - Cegah webhook menimpa status jika booking telah berada pada status terminal atau sengketa:
     - Jika `booking.escrowStatus === "DISPUTED"`, jangan ubah kembali menjadi `"HELD"`.
     - Jika `booking.escrowStatus === "RELEASED"`, jangan ubah kembali menjadi `"HELD"`.

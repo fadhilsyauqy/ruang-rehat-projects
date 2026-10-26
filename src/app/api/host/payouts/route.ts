@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 // Helper: Sinkronisasi dan rilis otomatis dana escrow yang telah melewati batas 24 jam check-in
-async function syncReleasedEscrow(hostUserId: string) {
+async function syncReleasedEscrow(hostUserId: string, tx: Prisma.TransactionClient = prisma) {
   const now = new Date()
-  await prisma.booking.updateMany({
+  await tx.booking.updateMany({
     where: {
       property: { hostId: hostUserId },
       paymentStatus: "PAID",
@@ -117,77 +118,99 @@ export async function POST(req: Request) {
       )
     }
 
-    // 2. Jalankan sinkronisasi escrow sebelum menghitung saldo yang dapat dicairkan
-    await syncReleasedEscrow(session.user.id)
+    // 2. Jalankan seluruh kalkulasi saldo, pemotongan penalti, dan pembuatan payout dalam 1 interactive transaction atomik
+    // Terapkan pessimistic row locking (FOR UPDATE) dan Serializable isolation level untuk mencegah race condition (double withdrawal)
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // Kunci baris user host secara pesimis
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${session.user!.id!} FOR UPDATE`
 
-    // Denda pembatalan yang belum dipotong
-    const penalties = await prisma.hostPenalty.findMany({
-      where: { hostId: session.user.id, isDeducted: false }
-    })
-    const totalPenaltyIdr = penalties.reduce((sum, p) => sum + p.amountIdr, 0)
+        // Sinkronisasi escrow di dalam konteks transaksi
+        await syncReleasedEscrow(session.user!.id!, tx)
 
-    // Hitung total dana berstatus RELEASED dalam IDR
-    const releasedBookings = await prisma.booking.findMany({
-      where: {
-        property: { hostId: session.user.id },
-        paymentStatus: "PAID",
-        escrowStatus: "RELEASED",
-        status: { not: "CANCELLED" }
+        // Denda pembatalan yang belum dipotong
+        const penalties = await tx.hostPenalty.findMany({
+          where: { hostId: session.user!.id!, isDeducted: false }
+        })
+        const totalPenaltyIdr = penalties.reduce((sum, p) => sum + p.amountIdr, 0)
+
+        // Hitung total dana berstatus RELEASED dalam IDR
+        const releasedBookings = await tx.booking.findMany({
+          where: {
+            property: { hostId: session.user!.id! },
+            paymentStatus: "PAID",
+            escrowStatus: "RELEASED",
+            status: { not: "CANCELLED" }
+          }
+        })
+
+        const totalReleasedRevenueIdr = releasedBookings.reduce((sum, b) => {
+          return sum + (b.netHostPayoutIdr || (b.totalPriceIdr ? Math.round(b.totalPriceIdr * 0.97) : Math.round((b.totalPrice || 0) * 18051)))
+        }, 0)
+
+        // Hitung total penarikan yang sudah diajukan sebelumnya (tidak termasuk FAILED)
+        const existingPayouts = await tx.payout.findMany({
+          where: {
+            userId: session.user!.id!,
+            status: { not: "FAILED" }
+          }
+        })
+
+        const totalWithdrawnIdr = existingPayouts.reduce((sum, p) => sum + (p.amount || 0), 0)
+        const availableBalanceIdr = Math.max(0, totalReleasedRevenueIdr - totalWithdrawnIdr - totalPenaltyIdr)
+
+        if (withdrawAmount > availableBalanceIdr) {
+          throw new Error(`INSUFFICIENT_BALANCE:${availableBalanceIdr}`)
+        }
+
+        // 3. Jika ada penalti, tandai penalti sudah dipotong di dalam transaksi yang sama
+        if (penalties.length > 0) {
+          await tx.hostPenalty.updateMany({
+            where: { id: { in: penalties.map(p => p.id) } },
+            data: { isDeducted: true }
+          })
+        }
+
+        // 4. Catat transaksi penarikan dana dengan status PENDING (Menunggu Verifikasi Admin)
+        const payout = await tx.payout.create({
+          data: {
+            userId: session.user!.id!,
+            amount: withdrawAmount,
+            status: "PENDING",
+            bankName: bankAccount.bankName,
+            accountNumber: bankAccount.accountNumber,
+            accountHolder: bankAccount.accountHolder,
+            notes: notes || "Permohonan pencairan dana hasil sewa reguler (Escrow Released)",
+            processedAt: null
+          }
+        })
+
+        return {
+          payout,
+          remainingBalanceIdr: availableBalanceIdr - withdrawAmount
+        }
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
       }
+    )
+
+    return NextResponse.json({
+      message: "Permohonan penarikan dana berhasil diajukan dan sedang menunggu verifikasi admin.",
+      payout: result.payout,
+      remainingBalanceIdr: result.remainingBalanceIdr
     })
-
-    const totalReleasedRevenueIdr = releasedBookings.reduce((sum, b) => {
-      return sum + (b.netHostPayoutIdr || (b.totalPriceIdr ? Math.round(b.totalPriceIdr * 0.97) : Math.round((b.totalPrice || 0) * 18051)))
-    }, 0)
-
-    // Hitung total penarikan yang sudah diajukan sebelumnya (tidak termasuk FAILED)
-    const existingPayouts = await prisma.payout.findMany({
-      where: {
-        userId: session.user.id,
-        status: { not: "FAILED" }
-      }
-    })
-
-    const totalWithdrawnIdr = existingPayouts.reduce((sum, p) => sum + (p.amount || 0), 0)
-    const availableBalanceIdr = Math.max(0, totalReleasedRevenueIdr - totalWithdrawnIdr - totalPenaltyIdr)
-
-    if (withdrawAmount > availableBalanceIdr) {
+  } catch (error: unknown) {
+    const err = error as Error
+    if (err?.message?.startsWith("INSUFFICIENT_BALANCE:")) {
+      const balance = Number(err.message.split(":")[1]) || 0
       return NextResponse.json(
         { 
-          error: `Saldo siap ditarik tidak mencukupi. Saldo tersedia: Rp ${availableBalanceIdr.toLocaleString("id-ID")}` 
+          error: `Saldo siap ditarik tidak mencukupi. Saldo tersedia: Rp ${balance.toLocaleString("id-ID")}` 
         },
         { status: 400 }
       )
     }
-
-    // 3. Jika ada penalti, tandai penalti sudah dipotong
-    if (penalties.length > 0) {
-      await prisma.hostPenalty.updateMany({
-        where: { id: { in: penalties.map(p => p.id) } },
-        data: { isDeducted: true }
-      })
-    }
-
-    // 4. Catat transaksi penarikan dana dengan status PENDING (Menunggu Verifikasi Admin)
-    const payout = await prisma.payout.create({
-      data: {
-        userId: session.user.id,
-        amount: withdrawAmount,
-        status: "PENDING",
-        bankName: bankAccount.bankName,
-        accountNumber: bankAccount.accountNumber,
-        accountHolder: bankAccount.accountHolder,
-        notes: notes || "Permohonan pencairan dana hasil sewa reguler (Escrow Released)",
-        processedAt: null
-      }
-    })
-
-    return NextResponse.json({
-      message: "Permohonan penarikan dana berhasil diajukan dan sedang menunggu verifikasi admin.",
-      payout,
-      remainingBalanceIdr: availableBalanceIdr - withdrawAmount
-    })
-  } catch (error) {
     console.error("Error creating payout:", error)
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }

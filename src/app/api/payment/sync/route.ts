@@ -188,11 +188,30 @@ export async function POST(req: Request) {
       targetPaymentStatus = PaymentStatus.PENDING
     }
 
+    // Proteksi status escrow agar tidak ditimpa kembali menjadi HELD jika sudah berstatus terminal/sengketa
+    if (
+      booking.escrowStatus === EscrowStatus.DISPUTED ||
+      booking.escrowStatus === EscrowStatus.RELEASED ||
+      booking.escrowStatus === EscrowStatus.REFUNDED_TO_GUEST ||
+      booking.escrowStatus === EscrowStatus.PARTIAL_REFUND
+    ) {
+      targetEscrowStatus = undefined
+    }
+
+    // Proteksi status booking terminal (CANCELLED, COMPLETED, DISPUTED)
+    if (booking.status === BookingStatus.CANCELLED) {
+      targetBookingStatus = BookingStatus.CANCELLED
+    } else if (booking.status === BookingStatus.COMPLETED) {
+      targetBookingStatus = BookingStatus.COMPLETED
+    } else if (booking.status === BookingStatus.DISPUTED) {
+      targetBookingStatus = BookingStatus.DISPUTED
+    }
+
     const isBecomingPaid = targetPaymentStatus === PaymentStatus.PAID && (booking.paymentStatus as PaymentStatus) !== PaymentStatus.PAID
     const isChanged = targetPaymentStatus !== booking.paymentStatus || targetBookingStatus !== booking.status
 
-    // 6. Picu email notifikasi jika status beralih menjadi PAID
-    if (isBecomingPaid) {
+    // 6. Picu email notifikasi jika status beralih menjadi PAID dan pesanan belum dibatalkan
+    if (isBecomingPaid && booking.status !== BookingStatus.CANCELLED) {
       const host = booking.property?.host
       if (host?.email && host.notifyHostBooking !== false) {
         const guestDisplayName = booking.guest?.preferredName || booking.guest?.name || "Tamu Ruang Rehat"

@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { cookies } from "next/headers"
 import { getDictionary } from "@/lib/dictionary"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import ExploreView from "@/components/ExploreView"
 import { toCheckInDateTimeWIB, toCheckOutDateTimeWIB } from "@/lib/date-standards"
 
@@ -24,7 +25,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ [
 
   // Build Prisma Where Clause dynamically
   // Proteksi Konsumen: Hanya tampilkan properti yang telah lolos verifikasi KYC (isPublished: true)
-  const whereClause: any = {
+  const whereClause: Prisma.PropertyWhereInput = {
     isPublished: true
   }
 
@@ -49,9 +50,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ [
   }
 
   if (minPrice || maxPrice) {
-    whereClause.pricePerNight = {}
-    if (minPrice) whereClause.pricePerNight.gte = Math.round(parseFloat(minPrice))
-    if (maxPrice) whereClause.pricePerNight.lte = Math.round(parseFloat(maxPrice))
+    const priceFilter: Prisma.IntFilter = {}
+    if (minPrice) priceFilter.gte = Math.round(parseFloat(minPrice))
+    if (maxPrice) priceFilter.lte = Math.round(parseFloat(maxPrice))
+    whereClause.pricePerNight = priceFilter
   }
 
   // CRITICAL: Anti-Overlap Date Filter Logic (Standar Check-in 14:00 WIB & Check-out 12:00 WIB)
@@ -64,6 +66,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ [
     whereClause.bookings = {
       none: {
         status: { not: 'CANCELLED' },
+        startDate: { lt: checkOutDate },
+        endDate: { gt: checkInDate }
+      }
+    }
+
+    // Task 3.3: Sinkronkan dengan tanggal yang diblokir oleh host (BlockedDate)
+    whereClause.blockedDates = {
+      none: {
         startDate: { lt: checkOutDate },
         endDate: { gt: checkInDate }
       }

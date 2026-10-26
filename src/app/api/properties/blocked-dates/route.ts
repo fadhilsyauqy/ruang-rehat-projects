@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { Prisma } from "@prisma/client"
 import { getWibDateString, toCheckInDateTimeWIB, toCheckOutDateTimeWIB, isPastDateWIB } from "@/lib/date-standards"
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (!session || !session.user || (session.user as any).role !== "HOST") {
+  const userRole = (session?.user as { role?: string })?.role
+  if (!session || !session.user || userRole !== "HOST") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -13,7 +15,7 @@ export async function GET(req: Request) {
   const propertyId = searchParams.get("propertyId")
 
   try {
-    const whereClause: any = {
+    const whereClause: Prisma.BlockedDateWhereInput = {
       property: { hostId: session.user.id }
     }
     if (propertyId) {
@@ -38,7 +40,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (!session || !session.user || (session.user as any).role !== "HOST") {
+  const userRole = (session?.user as { role?: string })?.role
+  if (!session || !session.user || userRole !== "HOST") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
     }
 
     const startYmd = getWibDateString(startDate)
-    let endYmd = getWibDateString(endDate)
+    const endYmd = getWibDateString(endDate)
 
     if (startYmd > endYmd) {
       return NextResponse.json({ error: "Tanggal mulai tidak boleh lebih besar dari tanggal selesai." }, { status: 400 })
@@ -76,6 +79,43 @@ export async function POST(req: Request) {
       // Jika host memilih tanggal yang sama (misal 27 Okt s/d 27 Okt), blokir 1 malam sampai 28 Okt 12:00 WIB
       const nextDay = new Date(start.getTime() + 24 * 60 * 60 * 1000)
       end = toCheckOutDateTimeWIB(nextDay)
+    }
+
+    // Task 3.2: Validasi bentrok reservasi aktif saat host memblokir tanggal
+    const conflictingBooking = await prisma.booking.findFirst({
+      where: {
+        propertyId,
+        status: { not: "CANCELLED" },
+        paymentStatus: { notIn: ["FAILED", "CANCELLED", "EXPIRED"] },
+        startDate: { lt: end },
+        endDate: { gt: start }
+      },
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true
+      }
+    })
+
+    if (conflictingBooking) {
+      return NextResponse.json({
+        error: "Tidak dapat memblokir tanggal karena terdapat reservasi aktif tamu pada rentang tanggal tersebut."
+      }, { status: 400 })
+    }
+
+    // Cegah duplikasi blokir jika rentang tanggal sudah pernah diblokir sebelumnya
+    const conflictingBlocked = await prisma.blockedDate.findFirst({
+      where: {
+        propertyId,
+        startDate: { lt: end },
+        endDate: { gt: start }
+      }
+    })
+
+    if (conflictingBlocked) {
+      return NextResponse.json({
+        error: "Rentang tanggal yang dipilih sudah pernah diblokir sebelumnya."
+      }, { status: 400 })
     }
 
     const blocked = await prisma.blockedDate.create({
@@ -96,7 +136,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const session = await auth()
-  const userRole = (session?.user as any)?.role
+  const userRole = (session?.user as { role?: string })?.role
 
   if (!session || !session.user || (userRole !== "HOST" && userRole !== "ADMIN")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
