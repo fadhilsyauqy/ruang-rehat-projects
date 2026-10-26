@@ -316,7 +316,7 @@ export default function HostBookingsTab({
                     (currentLang === "en"
                       ? "Cancellation reason:"
                       : "Alasan batal:")}{" "}
-                  "{b.cancelReason}"
+                  &quot;{b.cancelReason}&quot;
                 </p>
               )}
             </div>

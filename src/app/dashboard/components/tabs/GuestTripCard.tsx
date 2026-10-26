@@ -290,7 +290,7 @@ export default function GuestTripCard({
           )}
 
           {!isCompleted && b.status !== "CANCELLED" && (
-            <GuestTripActions booking={b} t={t} currentLang={currentLang} />
+            <GuestTripActions booking={b} t={t} currentLang={currentLang} nowTime={nowTime} />
           )}
         </div>
       </div>

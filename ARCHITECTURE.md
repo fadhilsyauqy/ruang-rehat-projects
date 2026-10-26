@@ -53,7 +53,7 @@ airbnb-projects/
     │   │   ├── favorites/         # Manajemen wishlist / favorit tamu
     │   │   ├── host/              # Inquiry rekening bank, pengelolaan penarikan dana host (payout)
     │   │   ├── kyc/               # Endpoint pengunggahan & pengajuan verifikasi KTP host
-    │   │   ├── payment/           # Checkout Midtrans Snap token dan konfirmasi pembayaran
+    │   │   ├── payment/           # Checkout Midtrans Snap token, active sync verification, dan proteksi bypass
     │   │   ├── properties/        # Endpoint query listing, filter geospasial, dan kalender diblokir
     │   │   ├── reviews/           # Pengiriman ulasan & rating pasca-menginap
     │   │   ├── upload/            # Upload file multipart ke Cloudinary
@@ -506,14 +506,14 @@ sequenceDiagram
 
 ---
 
-### 4.3 Alur Reservasi, Penguncian Tanggal (Pessimistic Lock), Pembayaran, & Webhook
+### 4.3 Alur Reservasi, Penguncian Tanggal (Pessimistic Lock), Pembayaran, & Dual-Verification System (Push + Pull)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Guest as Tamu
     participant FE as BookingClient / Checkout
-    participant API as POST /api/payment/checkout
+    participant API as Payment API
     participant DB as PostgreSQL (Prisma Tx)
     participant Midtrans as Midtrans Snap Engine
     participant Resend as Layanan Email Resend
@@ -539,7 +539,7 @@ sequenceDiagram
     else Tanggal Aman Tersedia
         API->>DB: Ambil SystemSetting (Kurs dinamis, % Fee tamu 10%, % Fee host 3%)
         API->>API: Hitung subtotal, biaya layanan, total IDR, dan net host payout
-        API->>Midtrans: snap.createTransaction({ order_id, gross_amount, item_details })
+        API->>Midtrans: snap.createTransaction({ order_id, gross_amount, callbacks })
         Midtrans-->>API: { token: snapToken, redirect_url }
         API->>DB: INSERT INTO "Booking" (status=PENDING, paymentStatus=PENDING, expiresAt=NOW+60m)
         DB-->>API: Booking Created
@@ -550,7 +550,7 @@ sequenceDiagram
     FE->>Guest: Buka Midtrans Snap Popup / Arahkan ke /checkout/[id]
     Guest->>Midtrans: Tamu Membayar via QRIS / VA / Kartu Kredit
     
-    Note over Midtrans,DB: 4. NOTIFIKASI ASINKRON: WEBHOOK RESMI
+    Note over Midtrans,DB: JALUR 1 (PUSH): WEBHOOK RESMI ASINKRON
     Midtrans->>API: POST /api/webhooks/midtrans (Payload notifikasi)
     activate API
     API->>API: Verifikasi Signature SHA-512 (orderId + statusCode + grossAmount + serverKey)
@@ -561,6 +561,23 @@ sequenceDiagram
         API-->>Midtrans: HTTP 200 OK
     else Signature Tidak Valid
         API-->>Midtrans: HTTP 403 Invalid Signature
+    end
+    deactivate API
+
+    Note over Guest,DB: JALUR 2 (PULL): ACTIVE SYNC VERIFICATION (Localhost / Fallback)
+    Guest->>FE: Klik "Cek Status" di Dasbor / Auto-Sync on Success
+    FE->>API: POST /api/payment/sync { bookingId }
+    activate API
+    API->>API: Validasi Sesi & Hak Akses (Guest / Host / Admin)
+    API->>Midtrans: snap.transaction.status(orderId) (Server-to-Server)
+    Midtrans-->>API: Status Resmi Midtrans (settlement / capture / expire)
+    alt Status Terbayar (Settlement)
+        API->>DB: UPDATE "Booking" SET paymentStatus='PAID', status='CONFIRMED', escrowStatus='HELD'
+        API->>Resend: Kirim E-Voucher ke Tamu & Notifikasi Host (jika belum terkirim)
+        API-->>FE: HTTP 200 { success: true, updated: true, paymentStatus: 'PAID' }
+        FE-->>Guest: Kartu Pesanan Berubah Menjadi HIJAU (Terkonfirmasi)
+    else Status Belum Bayar
+        API-->>FE: HTTP 200 { success: true, updated: false, paymentStatus: 'PENDING' }
     end
     deactivate API
 ```
@@ -642,6 +659,7 @@ Platform membagi hak akses ke dalam 3 hierarki peran (*Role*) dan 1 status verif
 2. **Server-Side Session Check:** Setiap Route Handler memverifikasi token sesi `await auth()`.
 3. **Database Row-Level Integrity:** Pemeriksaan eksplisit bahwa `record.userId === session.user.id` sebelum mutasi data dijalankan.
 4. **Signature Hashing:** Webhook pembayaran Midtrans diverifikasi menggunakan enkripsi SHA-512 dengan `MIDTRANS_SERVER_KEY`.
+5. **Dual-Channel Payment Verification (Push + Pull):** Konfirmasi status pembayaran `PAID` dan `CONFIRMED` diisolasi secara ketat pada 2 saluran terverifikasi: Webhook resmi ber-signature SHA-512 (Push) atau Active Query Server-to-Server ke Midtrans API via `/api/payment/sync` (Pull). Endpoint manipulasi langsung sisi klien (`/api/payment/success`) dinonaktifkan permanen (HTTP 405).
 
 ---
 
@@ -668,8 +686,9 @@ Platform membagi hak akses ke dalam 3 hierarki peran (*Role*) dan 1 status verif
 | `GET` | `/api/properties` | Publik | `lat, lng, radius` | Pencarian listing akomodasi aktif berdasarkan koordinat geografis. |
 | `POST` | `/api/properties` | User (Host) | Payload properti, fasilitas, foto | Mendaftarkan properti baru (status draft jika belum KYC). |
 | `GET` | `/api/properties/[id]` | Publik | `id` (Path param) | Detail lengkap akomodasi beserta riwayat ulasan terverifikasi. |
-| `POST` | `/api/payment/checkout` | Logged-in User | `propertyId, startDate, endDate, guests` | Penguncian tanggal (FOR UPDATE) & pembuatan token Midtrans Snap. |
-| `POST` | `/api/payment/success` | *Disabled* | - | Dinonaktifkan (405) demi keamanan. Status pembayaran murni diproses via webhook Midtrans. |
+| `POST` | `/api/payment/checkout` | Logged-in User | `propertyId, startDate, endDate, guests` | Penguncian tanggal (FOR UPDATE), pembuatan token Midtrans Snap dengan callback URL, dan sinkronisasi `midtransOrderId`. |
+| `POST` | `/api/payment/sync` | Guest / Host / Admin | `bookingId` | Active Query Server-to-Server ke status transaksi Midtrans API (Dual-Verification), pembaruan atomik status `PAID`, dan pengiriman email notifikasi. |
+| `POST` | `/api/payment/success` | *Disabled* | - | Dinonaktifkan (405) demi keamanan. Status pembayaran murni diproses via webhook Midtrans atau query resmi `/api/payment/sync`. |
 | `POST` | `/api/webhooks/midtrans` | Midtrans Server| Payload notifikasi Midtrans | Webhook resmi pembaruan status transaksi via signature SHA-512. |
 | `PATCH`| `/api/bookings/[id]/cancel` | Guest / Host | `cancelReason, bankDetails` | Pembatalan pesanan terstruktur (perhitungan penalti & refund). |
 | `GET` | `/api/host/payouts` | Host | - | Mengambil riwayat payout, saldo tertahan (HELD), dan saldo siap tarik. |

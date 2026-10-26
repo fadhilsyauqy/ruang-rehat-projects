@@ -3,8 +3,21 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { PaymentStatus, BookingStatus, EscrowStatus } from "@prisma/client"
 import { sendBookingConfirmationEmail, sendHostNewBookingEmail } from "@/lib/notifications"
-// @ts-ignore
+// @ts-expect-error - midtrans-client lacks official TypeScript declaration files
 import midtransClient from "midtrans-client"
+
+interface MidtransStatusResponse {
+  status_code?: string
+  transaction_status?: string
+  fraud_status?: string
+  [key: string]: unknown
+}
+
+interface MidtransErrorLike {
+  ApiResponse?: { status_code?: string }
+  status_code?: string
+  message?: string
+}
 
 function getSnapClient() {
   const serverKey = process.env.MIDTRANS_SERVER_KEY
@@ -34,7 +47,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const body = await req.json().catch(() => null)
+    const body = (await req.json().catch(() => null)) as { bookingId?: unknown } | null
     const bookingId = body?.bookingId
     if (!bookingId || typeof bookingId !== "string") {
       return NextResponse.json(
@@ -79,7 +92,7 @@ export async function POST(req: Request) {
 
     // 2. Otorisasi kepemilikan pesanan
     const userId = session.user.id
-    const userRole = (session.user as any).role
+    const userRole = (session.user as { role?: string }).role
     const isGuest = booking.guestId === userId
     const isHost = booking.property?.hostId === userId
     const isAdmin = userRole === "ADMIN"
@@ -103,18 +116,20 @@ export async function POST(req: Request) {
     }
 
     // 4. Hubungi Midtrans API (Server-to-Server Query)
-    let midtransStatus: any = null
+    let midtransStatus: MidtransStatusResponse | null = null
     const snap = getSnapClient()
 
     try {
       // Gunakan booking.id terlebih dahulu sebagai order_id resmi Midtrans
-      midtransStatus = await snap.transaction.status(booking.id)
-    } catch (primaryErr: any) {
+      midtransStatus = (await snap.transaction.status(booking.id)) as MidtransStatusResponse
+    } catch (primaryErrUnknown: unknown) {
+      const primaryErr = primaryErrUnknown as MidtransErrorLike
       const is404 = primaryErr?.ApiResponse?.status_code === "404" || primaryErr?.status_code === "404"
       if (is404 && booking.midtransOrderId && booking.midtransOrderId !== booking.id) {
         try {
-          midtransStatus = await snap.transaction.status(booking.midtransOrderId)
-        } catch (fallbackErr: any) {
+          midtransStatus = (await snap.transaction.status(booking.midtransOrderId)) as MidtransStatusResponse
+        } catch (fallbackErrUnknown: unknown) {
+          const fallbackErr = fallbackErrUnknown as MidtransErrorLike
           const fallback404 = fallbackErr?.ApiResponse?.status_code === "404" || fallbackErr?.status_code === "404"
           if (fallback404) {
             return NextResponse.json({
@@ -219,15 +234,15 @@ export async function POST(req: Request) {
 
     // 8. Bentuk pesan respon informatif
     let message = "Status pembayaran belum berubah."
-    if (targetPaymentStatus === "PAID") {
+    if (targetPaymentStatus === PaymentStatus.PAID) {
       message = isBecomingPaid
         ? "Pembayaran berhasil diverifikasi. Pesanan Anda telah terkonfirmasi!"
         : "Pesanan telah terkonfirmasi."
-    } else if (targetPaymentStatus === "EXPIRED") {
+    } else if (targetPaymentStatus === PaymentStatus.EXPIRED) {
       message = "Waktu pembayaran pesanan telah kedaluwarsa."
-    } else if (targetPaymentStatus === "FAILED") {
+    } else if (targetPaymentStatus === PaymentStatus.FAILED) {
       message = "Pembayaran ditolak atau dibatalkan oleh penyedia pembayaran."
-    } else if (targetPaymentStatus === "PENDING") {
+    } else if (targetPaymentStatus === PaymentStatus.PENDING) {
       message = "Pembayaran belum diselesaikan di payment gateway."
     }
 
@@ -239,10 +254,11 @@ export async function POST(req: Request) {
       message
     }, { status: 200 })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Internal server error"
     console.error("Payment Sync Error:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: errorMsg },
       { status: 500 }
     )
   }

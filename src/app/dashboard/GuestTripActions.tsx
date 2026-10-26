@@ -13,11 +13,13 @@ import { ShieldAlert, RotateCw, CheckCircle2, AlertCircle } from "lucide-react"
 export default function GuestTripActions({ 
   booking, 
   t, 
-  currentLang = "id" 
+  currentLang = "id",
+  nowTime = 0
 }: { 
   booking: any, 
   t: any, 
-  currentLang?: string 
+  currentLang?: string,
+  nowTime?: number
 }) {
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error" | "info", text: string } | null>(null)
@@ -124,7 +126,7 @@ export default function GuestTripActions({
 
   // Jika sudah dibayar (PAID)
   if (booking.paymentStatus === "PAID") {
-    const now = Date.now()
+    const now = nowTime
     const checkInDateTime = toCheckInDateTimeWIB(booking.startDate)
     const checkInTime = checkInDateTime.getTime()
 
