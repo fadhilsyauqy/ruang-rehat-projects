@@ -63,12 +63,7 @@ export default function CheckoutClient({
       if ((window as any).snap && !snapInstance) {
         snapInstance = (window as any).snap.embed(token, {
           embedId: 'snap-container',
-          onSuccess: async function (result: any) {
-            await fetch('/api/payment/success', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ order_id: result.order_id })
-            })
+          onSuccess: async function () {
             setIsPaid(true)
             setTimeout(() => {
               router.push('/dashboard')

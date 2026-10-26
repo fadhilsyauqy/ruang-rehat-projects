@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
+import { sendBookingConfirmationEmail, sendHostNewBookingEmail } from "@/lib/notifications"
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +17,11 @@ export async function POST(req: Request) {
       fraud_status
     } = data
 
-    const serverKey = process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-YOUR_DUMMY_KEY"
+    const serverKey = process.env.MIDTRANS_SERVER_KEY
+    if (!serverKey) {
+      console.error("MIDTRANS_SERVER_KEY is not configured on server.")
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
     
     // Verifikasi Signature Midtrans untuk keamanan
     const hash = crypto.createHash("sha512")
@@ -48,6 +53,53 @@ export async function POST(req: Request) {
       bookingStatus = 'CANCELLED'
     } else if (transaction_status === 'pending') {
       paymentStatus = 'PENDING'
+    }
+
+    // Jika pembayaran berhasil (PAID), kirim email notifikasi kepada Host dan Tamu
+    if (paymentStatus === 'PAID') {
+      const existingBooking = await prisma.booking.findUnique({
+        where: { id: order_id },
+        include: {
+          property: {
+            include: {
+              host: {
+                select: { id: true, name: true, email: true, notifyHostBooking: true }
+              }
+            }
+          },
+          guest: {
+            select: { id: true, name: true, preferredName: true, email: true }
+          }
+        }
+      })
+
+      if (existingBooking && existingBooking.paymentStatus !== 'PAID') {
+        const host = existingBooking.property?.host
+        if (host?.email && host.notifyHostBooking !== false) {
+          const guestDisplayName = existingBooking.guest?.preferredName || existingBooking.guest?.name || "Tamu Ruang Rehat"
+          sendHostNewBookingEmail({
+            hostEmail: host.email,
+            hostName: host.name,
+            propertyName: existingBooking.property.title,
+            startDate: existingBooking.startDate,
+            endDate: existingBooking.endDate,
+            guestName: guestDisplayName,
+            guestsCount: existingBooking.guestsCount || 1,
+            totalNights: existingBooking.totalNights || 1,
+            netHostPayoutIdr: existingBooking.netHostPayoutIdr || 0,
+            bookingId: existingBooking.id
+          }).catch(console.error)
+        }
+
+        if (existingBooking.guest?.email) {
+          sendBookingConfirmationEmail(
+            existingBooking.guest.email,
+            existingBooking.property.title,
+            existingBooking.startDate,
+            existingBooking.endDate
+          ).catch(console.error)
+        }
+      }
     }
 
     // Update database
