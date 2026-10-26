@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { toCheckInDateTimeWIB, toCheckOutDateTimeWIB, toEscrowReleaseDateTimeWIB, calculateStayNights } from "@/lib/date-standards"
+import { getSystemSettings, calculateBookingFinancials } from "@/lib/settings"
 // @ts-ignore
 import midtransClient from "midtrans-client"
 
@@ -83,11 +84,16 @@ export async function POST(req: Request) {
       const propertyTitle = prop.title
       const now = new Date()
 
-      // Validasi batas maksimal durasi menginap (default 28 malam) sesuai standar kalender WIB
+      // Ambil konfigurasi sistem dinamis (kurs, persentase fee, batasan durasi menginap)
+      const settings = await getSystemSettings(tx)
+
+      // Validasi batas maksimal durasi menginap sesuai pengaturan dinamis platform & properti
       const totalNights = calculateStayNights(start, end)
-      const maxStay = prop.maxStayNights || 28
-      if (totalNights < 1 || totalNights > maxStay) {
-        throw new Error(`Durasi menginap maksimal adalah ${maxStay} malam per transaksi`)
+      const effectiveMaxStay = prop.maxStayNights && prop.maxStayNights > 0 
+        ? Math.min(prop.maxStayNights, settings.maxStayNights) 
+        : settings.maxStayNights
+      if (totalNights < 1 || totalNights > effectiveMaxStay) {
+        throw new Error(`Durasi menginap maksimal adalah ${effectiveMaxStay} malam per transaksi`)
       }
 
       // Otomatis batalkan booking PENDING yang sudah melewati batas waktu (60 menit)
@@ -133,19 +139,25 @@ export async function POST(req: Request) {
         throw new Error("Rentang tanggal yang Anda pilih mencakup tanggal yang diblokir oleh host.")
       }
 
-      // Hitung rincian biaya IDR murni (Single Source of Truth)
+      // Hitung rincian biaya IDR murni (Single Source of Truth) menggunakan kurs dinamis
       const nightlyRateIdr = prop.pricePerNight > 0 
         ? prop.pricePerNight 
-        : Math.round((prop.price || 0) * 18051)
-      const cleaningFeeIdr = prop.cleaningFee || 0
-      const roomSubtotalIdr = nightlyRateIdr * totalNights
-      const grossStayIdr = roomSubtotalIdr + cleaningFeeIdr
+        : Math.round((prop.price || 0) * settings.usdExchangeRate)
 
-      // Split-fee Economics: 10% Layanan Tamu & 3% Potongan Host
-      const guestServiceFeeIdr = Math.round(grossStayIdr * 0.10)
-      const hostPlatformFeeIdr = Math.round(grossStayIdr * 0.03)
-      const totalPriceIdr = grossStayIdr + guestServiceFeeIdr
-      const netHostPayoutIdr = Math.max(0, grossStayIdr - hostPlatformFeeIdr)
+      // Split-fee Economics dinamis dari SystemSetting
+      const {
+        roomSubtotalIdr,
+        cleaningFeeIdr,
+        guestServiceFeeIdr,
+        hostPlatformFeeIdr,
+        totalPriceIdr,
+        netHostPayoutIdr
+      } = calculateBookingFinancials({
+        nightlyRateIdr,
+        cleaningFeeIdr: prop.cleaningFee || 0,
+        totalNights,
+        settings,
+      })
 
       // Standar Waktu Indonesia (WIB): Rilis escrow 24 jam setelah jam check-in resmi (H+1 14:00 WIB)
       const escrowReleaseAt = toEscrowReleaseDateTimeWIB(start)
@@ -173,10 +185,10 @@ export async function POST(req: Request) {
           netHostPayoutIdr,
           escrowReleaseAt,
           // Legacy fields untuk kompatibilitas transisi
-          nightlyRate: nightlyRateIdr / 18051,
-          totalPrice: totalPriceIdr / 18051,
-          cleaningFee: cleaningFeeIdr / 18051,
-          serviceFee: guestServiceFeeIdr / 18051,
+          nightlyRate: nightlyRateIdr / settings.usdExchangeRate,
+          totalPrice: totalPriceIdr / settings.usdExchangeRate,
+          cleaningFee: cleaningFeeIdr / settings.usdExchangeRate,
+          serviceFee: guestServiceFeeIdr / settings.usdExchangeRate,
           status: 'PENDING',
           paymentStatus: 'PENDING',
           escrowStatus: 'HELD',
@@ -193,7 +205,8 @@ export async function POST(req: Request) {
         guestServiceFeeIdr, 
         totalPriceIdr, 
         totalNights, 
-        expiresAt 
+        expiresAt,
+        guestServiceFeePct: settings.guestServiceFeePct
       }
     })
 
@@ -215,7 +228,7 @@ export async function POST(req: Request) {
         id: `service-fee`,
         price: newBooking.guestServiceFeeIdr,
         quantity: 1,
-        name: "Biaya Layanan Tamu (10%)",
+        name: `Biaya Layanan Tamu (${newBooking.guestServiceFeePct}%)`,
       }
     ]
 

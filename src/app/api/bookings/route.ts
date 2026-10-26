@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
-import { sendBookingConfirmationEmail } from "@/lib/notifications"
+import { sendBookingConfirmationEmail, sendHostNewBookingEmail } from "@/lib/notifications"
 import { toCheckInDateTimeWIB, toCheckOutDateTimeWIB, toEscrowReleaseDateTimeWIB, calculateStayNights } from "@/lib/date-standards"
+import { getSystemSettings, calculateBookingFinancials } from "@/lib/settings"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -67,23 +68,36 @@ export async function POST(req: Request) {
         throw new Error("Anda tidak dapat memesan properti milik Anda sendiri.")
       }
 
+      const prop = properties[0]
+      const settings = await getSystemSettings(tx)
+
       const totalNights = calculateStayNights(start, end)
-      const maxStay = properties[0].maxStayNights || 28
-      if (totalNights > maxStay) {
-        throw new Error(`Batas durasi menginap maksimal adalah ${maxStay} malam per transaksi`)
+      const effectiveMaxStay = prop.maxStayNights && prop.maxStayNights > 0 
+        ? Math.min(prop.maxStayNights, settings.maxStayNights) 
+        : settings.maxStayNights
+      if (totalNights < 1 || totalNights > effectiveMaxStay) {
+        throw new Error(`Batas durasi menginap maksimal adalah ${effectiveMaxStay} malam per transaksi`)
       }
 
-      // Hitung rincian V2 pure IDR
-      const nightlyRateIdr = properties[0].pricePerNight > 0 
-        ? properties[0].pricePerNight 
-        : Math.round((properties[0].price || 0) * 18051)
-      const cleaningFeeIdr = properties[0].cleaningFee || 0
-      const roomSubtotalIdr = nightlyRateIdr * totalNights
-      const grossStayIdr = roomSubtotalIdr + cleaningFeeIdr
-      const guestServiceFeeIdr = Math.round(grossStayIdr * 0.10)
-      const hostPlatformFeeIdr = Math.round(grossStayIdr * 0.03)
-      const totalPriceIdr = grossStayIdr + guestServiceFeeIdr
-      const netHostPayoutIdr = Math.max(0, grossStayIdr - hostPlatformFeeIdr)
+      // Hitung rincian V2 pure IDR menggunakan kurs dinamis
+      const nightlyRateIdr = prop.pricePerNight > 0 
+        ? prop.pricePerNight 
+        : Math.round((prop.price || 0) * settings.usdExchangeRate)
+
+      // Split-fee Economics dinamis dari SystemSetting
+      const {
+        roomSubtotalIdr,
+        cleaningFeeIdr,
+        guestServiceFeeIdr,
+        hostPlatformFeeIdr,
+        totalPriceIdr,
+        netHostPayoutIdr
+      } = calculateBookingFinancials({
+        nightlyRateIdr,
+        cleaningFeeIdr: prop.cleaningFee || 0,
+        totalNights,
+        settings,
+      })
 
       // Standar Waktu Indonesia (WIB): Rilis escrow 24 jam setelah jam check-in resmi (H+1 14:00 WIB)
       const escrowReleaseAt = toEscrowReleaseDateTimeWIB(start)
@@ -123,6 +137,8 @@ export async function POST(req: Request) {
         throw new Error("Rentang tanggal yang Anda pilih mencakup tanggal yang diblokir oleh host.")
       }
 
+      const guestsCount = Number(data.guests) || 1
+
       // 3. Create the booking
       return await tx.booking.create({
         data: {
@@ -130,6 +146,7 @@ export async function POST(req: Request) {
           guestId: session!.user!.id!,
           startDate: start,
           endDate: end,
+          guestsCount,
           totalNights,
           nightlyRateIdr,
           cleaningFeeIdr,
@@ -138,21 +155,48 @@ export async function POST(req: Request) {
           totalPriceIdr,
           netHostPayoutIdr,
           escrowReleaseAt,
-          totalPrice: totalPriceIdr / 18051,
-          nightlyRate: nightlyRateIdr / 18051,
-          cleaningFee: cleaningFeeIdr / 18051,
-          serviceFee: guestServiceFeeIdr / 18051,
+          totalPrice: totalPriceIdr / settings.usdExchangeRate,
+          nightlyRate: nightlyRateIdr / settings.usdExchangeRate,
+          cleaningFee: cleaningFeeIdr / settings.usdExchangeRate,
+          serviceFee: guestServiceFeeIdr / settings.usdExchangeRate,
           status: 'CONFIRMED'
         }
       })
     })
 
-    // If CONFIRMED, trigger notification.
-    if (newBooking.status === 'CONFIRMED' && session?.user?.email) {
-      const property = await prisma.property.findUnique({ where: { id: propertyId } })
+    // If CONFIRMED, trigger notifications to Guest and Host
+    if (newBooking.status === 'CONFIRMED') {
+      const property = await prisma.property.findUnique({
+        where: { id: propertyId },
+        include: {
+          host: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              notifyHostBooking: true
+            }
+          }
+        }
+      })
       if (property) {
-        // Run asynchronously, fire and forget
-        sendBookingConfirmationEmail(session!.user!.email!, property.title, start, end).catch(console.error)
+        if (session?.user?.email) {
+          sendBookingConfirmationEmail(session.user.email, property.title, start, end).catch(console.error)
+        }
+        if (property.host?.email && property.host.notifyHostBooking !== false) {
+          sendHostNewBookingEmail({
+            hostEmail: property.host.email,
+            hostName: property.host.name,
+            propertyName: property.title,
+            startDate: start,
+            endDate: end,
+            guestName: session?.user?.name || "Tamu Ruang Rehat",
+            guestsCount: newBooking.guestsCount || 1,
+            totalNights: newBooking.totalNights || 1,
+            netHostPayoutIdr: newBooking.netHostPayoutIdr || 0,
+            bookingId: newBooking.id
+          }).catch(console.error)
+        }
       }
     }
     
