@@ -82,7 +82,7 @@ export default function GuestTripActions({
             disabled={syncing}
             className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-semibold text-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <RotateCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
+            <RotateCw className={cn("w-4 h-4", syncing && "animate-spin")} />
             <span>
               {syncing 
                 ? (currentLang === "en" ? "Checking..." : "Memeriksa...") 

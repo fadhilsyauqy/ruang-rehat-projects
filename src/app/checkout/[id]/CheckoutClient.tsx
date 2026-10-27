@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
-import { MapPin, CalendarDays, Lock, Clock, Users, ArrowLeft } from "lucide-react"
+import { MapPin, CalendarDays, Lock, Clock, Users, ArrowLeft, RotateCw } from "lucide-react"
 import Link from "next/link"
 import { formatPrice } from "@/lib/format"
 import { calculateStayNights, formatWibDate } from "@/lib/date-standards"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function CheckoutClient({ 
   booking, 
@@ -25,6 +26,7 @@ export default function CheckoutClient({
 }) {
   const router = useRouter()
   const [isPaid, setIsPaid] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const isInitiallyExpired = 
     booking.status === 'CANCELLED' || 
     booking.paymentStatus === 'EXPIRED' ||
@@ -55,6 +57,49 @@ export default function CheckoutClient({
     return () => clearInterval(interval)
   }, [isExpired, isPaid])
 
+  const handleSyncStatus = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch("/api/payment/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: booking.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || (currentLang === "en" ? "Failed to verify status" : "Gagal memverifikasi status pembayaran"))
+      }
+
+      if (data.paymentStatus === "PAID") {
+        setIsPaid(true)
+        toast({
+          variant: "success",
+          title: t.paymentSuccess || (currentLang === "en" ? "Payment Successful" : "Pembayaran Berhasil!"),
+          description: data.message || (currentLang === "en" ? "Your payment has been verified successfully." : "Pembayaran Anda berhasil diverifikasi."),
+        })
+        setTimeout(() => {
+          router.push("/dashboard?tab=trips")
+          router.refresh()
+        }, 2000)
+      } else {
+        toast({
+          variant: "info",
+          title: t.paymentPendingTitle || (currentLang === "en" ? "Payment Pending" : "Status Pembayaran"),
+          description: data.message || (currentLang === "en" ? "Payment not yet detected. Please finish your transfer." : "Pembayaran belum terdeteksi. Silakan selesaikan pembayaran."),
+        })
+      }
+    } catch (err: unknown) {
+      const error = err as Error
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Status Check Failed" : "Gagal Memeriksa Pembayaran",
+        description: error.message || (currentLang === "en" ? "Could not verify payment status." : "Terjadi kesalahan saat memeriksa pembayaran."),
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   useEffect(() => {
     if (isExpired) return
     let snapInstance: any = null
@@ -76,20 +121,39 @@ export default function CheckoutClient({
               console.error('Auto sync error:', syncErr)
             }
             setTimeout(() => {
-              router.push('/dashboard')
+              router.push('/dashboard?tab=trips')
               router.refresh()
             }, 2500)
           },
           onPending: function () {
-            router.push('/dashboard')
+            setSyncing(false)
+            toast({
+              variant: "info",
+              title: t.paymentPendingTitle || (currentLang === "en" ? "Payment Pending" : "Menunggu Pembayaran"),
+              description: t.paymentPendingDesc || (currentLang === "en"
+                ? "Your booking is saved. Please complete payment according to instructions before time expires."
+                : "Pesanan Anda tersimpan. Silakan selesaikan pembayaran sesuai petunjuk metode yang dipilih sebelum batas waktu berakhir."),
+            })
+            router.push('/dashboard?tab=trips')
           },
           onError: function () {
+            setSyncing(false)
             toast({
               variant: "destructive",
               title: t.paymentFailed || (currentLang === "en" ? "Payment Failed" : "Pembayaran Gagal"),
               description: currentLang === "en"
-                ? "Payment could not be completed. Please try another payment method."
-                : "Pembayaran tidak dapat diselesaikan. Silakan coba metode pembayaran lain.",
+                ? "Payment could not be completed. Please choose another payment method or retry."
+                : "Pembayaran tidak dapat diselesaikan. Silakan coba metode pembayaran lain atau ulangi proses.",
+            })
+          },
+          onClose: function () {
+            setSyncing(false)
+            toast({
+              variant: "warning",
+              title: t.paymentIncompleteTitle || (currentLang === "en" ? "Payment Incomplete" : "Pembayaran Belum Selesai"),
+              description: t.paymentIncompleteDesc || (currentLang === "en"
+                ? "Payment has not been completed. You can resume payment within 60 minutes via this page or My Trips in Dashboard."
+                : "Pembayaran belum diselesaikan. Anda dapat melanjutkan pembayaran dalam 60 menit melalui halaman ini atau menu Perjalanan Saya di Dasbor."),
             })
           }
         })
@@ -110,7 +174,7 @@ export default function CheckoutClient({
         } catch {}
       }
     }
-  }, [token, router, t, isExpired])
+  }, [token, router, t, isExpired, currentLang, booking.id])
 
   // Format detik menjadi mm:ss
   const formatTime = (seconds: number) => {
@@ -205,6 +269,29 @@ export default function CheckoutClient({
             <div className="text-2xl font-mono font-bold tracking-tight bg-white dark:bg-amber-900/60 px-3 py-1 rounded-lg border border-amber-300 dark:border-amber-700">
               {formatTime(timeLeft)}
             </div>
+          </div>
+
+          {/* Quick Payment Status Check */}
+          <div className="p-3.5 sm:p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                {t.alreadyTransferredPrompt || (currentLang === "en" ? "Already transferred via ATM or m-Banking?" : "Sudah transfer lewat ATM atau m-Banking?")}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {currentLang === "en" ? "Check real-time payment status immediately." : "Periksa pembaruan status pembayaran secara instan."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={syncing}
+              onClick={handleSyncStatus}
+              className="rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1.5 h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RotateCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
+              <span>{syncing ? (t.checkingPaymentStatus || (currentLang === "en" ? "Checking..." : "Memeriksa...")) : (t.checkPaymentStatus || (currentLang === "en" ? "Check Status" : "Cek Status"))}</span>
+            </Button>
           </div>
 
           <Card className="overflow-hidden border-gray-200 dark:border-gray-800">

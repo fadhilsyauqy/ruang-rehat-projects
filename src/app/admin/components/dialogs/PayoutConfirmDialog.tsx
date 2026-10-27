@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { CheckCircle2, Building2, CreditCard } from "lucide-react"
+import { CheckCircle2, Building2, CreditCard, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -64,7 +64,7 @@ export default function PayoutConfirmDialog({
   }
 
   return (
-    <Dialog open={!!payout} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!payout} onOpenChange={(open) => !open && !loading && onClose()}>
       <DialogContent className="max-w-lg p-6 sm:p-7 rounded-3xl">
         <DialogHeader className="space-y-1.5 pb-2">
           <div className="w-11 h-11 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center mb-1">
@@ -128,6 +128,7 @@ export default function PayoutConfirmDialog({
             </label>
             <Input
               type="text"
+              disabled={loading}
               placeholder={
                 currentLang === "en"
                   ? "e.g., BIFAST-20261026-98124 or BCA Ref 882910"
@@ -139,7 +140,7 @@ export default function PayoutConfirmDialog({
                 if (errorMsg) setErrorMsg("")
               }}
               required
-              className="rounded-xl text-xs bg-white dark:bg-gray-900 font-mono"
+              className="rounded-xl text-xs bg-white dark:bg-gray-900 font-mono disabled:opacity-60"
             />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {currentLang === "en"
@@ -162,6 +163,7 @@ export default function PayoutConfirmDialog({
             </label>
             <Input
               type="text"
+              disabled={loading}
               placeholder={
                 currentLang === "en"
                   ? "e.g., Transferred via corporate internet banking"
@@ -169,7 +171,7 @@ export default function PayoutConfirmDialog({
               }
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="rounded-xl text-xs bg-white dark:bg-gray-900"
+              className="rounded-xl text-xs bg-white dark:bg-gray-900 disabled:opacity-60"
             />
           </div>
 
@@ -179,22 +181,25 @@ export default function PayoutConfirmDialog({
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl text-xs"
+              className="rounded-xl text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {currentLang === "en" ? "Cancel" : "Batal"}
             </Button>
             <Button
               type="submit"
               disabled={loading || !referenceNumber.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {loading
-                ? currentLang === "en"
-                  ? "Processing..."
-                  : "Menyimpan..."
-                : currentLang === "en"
-                ? "Confirm Transfer Completed"
-                : "Konfirmasi & Selesaikan Payout"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{currentLang === "en" ? "Processing..." : "Menyimpan..."}</span>
+                </>
+              ) : currentLang === "en" ? (
+                "Confirm Transfer Completed"
+              ) : (
+                "Konfirmasi & Selesaikan Payout"
+              )}
             </Button>
           </div>
         </form>

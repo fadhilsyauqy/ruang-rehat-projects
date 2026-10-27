@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { ImagePlus, X, Loader2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { validateImageFile } from "@/lib/file-validation"
 
 interface ImageUploadProps {
   value: string[]
@@ -17,9 +18,6 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
-    const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
-
     setIsUploading(true)
     const newUrls: string[] = []
 
@@ -27,20 +25,12 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
 
-        if (!ALLOWED_TYPES.includes(file.type)) {
+        const validation = validateImageFile(file)
+        if (!validation.valid) {
           toast({
             variant: "destructive",
-            title: "Format Tidak Didukung",
-            description: `File "${file.name}" tidak didukung. Hanya JPEG, PNG, dan WebP yang diizinkan.`,
-          })
-          continue
-        }
-
-        if (file.size > MAX_SIZE) {
-          toast({
-            variant: "destructive",
-            title: "Ukuran Terlalu Besar",
-            description: `File "${file.name}" melebihi batas ukuran maksimal 5 MB.`,
+            title: validation.errorTitle || "File Tidak Valid",
+            description: validation.errorMessage || "File tidak memenuhi syarat upload.",
           })
           continue
         }

@@ -77,6 +77,7 @@ export default function BookingClient({
   const isOwner = sessionUser?.id === property.hostId
 
   const handleBooking = async () => {
+    if (loading) return
     if (!sessionUser) {
       toast({
         variant: "destructive",

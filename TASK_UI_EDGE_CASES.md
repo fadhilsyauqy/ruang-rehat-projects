@@ -11,9 +11,9 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 | Fase / Area | Fokus Audit & Perbaikan | Status | Jumlah Task |
 | :--- | :--- | :---: | :---: |
 | **Fase 1** | Sistem Toast Notification Terpusat & Eliminasi `alert()` / `confirm()` | `COMPLETED` | 4 Task |
-| **Fase 2** | Standarisasi Loading State & Proteksi Anti Double-Click | `PENDING` | 4 Task |
-| **Fase 3** | Pengerasan Edge Cases Alur Pembayaran Midtrans Snap | `PENDING` | 3 Task |
-| **Fase 4** | Sinkronisasi Validasi Sisi Klien (Upload Berkas & Seleksi Kalender) | `PENDING` | 3 Task |
+| **Fase 2** | Standarisasi Loading State & Proteksi Anti Double-Click | `COMPLETED` | 4 Task |
+| **Fase 3** | Pengerasan Edge Cases Alur Pembayaran Midtrans Snap | `COMPLETED` | 3 Task |
+| **Fase 4** | Sinkronisasi Validasi Sisi Klien (Upload Berkas & Seleksi Kalender) | `COMPLETED` | 3 Task |
 | **Fase 5** | Komponen Empty States Komprehensif & Aksi Reset Filter | `PENDING` | 4 Task |
 | **Fase 6** | Global Error Boundary, 404 Not Found, & Fallback UI | `PENDING` | 3 Task |
 | **Fase 7** | Sinkronisasi Kamus Lokalisasi Dwi-Bahasa (ID/EN) & Audit TypeScript | `PENDING` | 3 Task |
@@ -98,17 +98,17 @@ Mencegah terjadinya eksekusi ganda (*race condition* di sisi klien) saat penggun
 - `src/components/properties/PropertyFormActions.tsx`
 
 ### Checklist Task:
-- [ ] **Task 2.1: Proteksi Anti Double-Click & Spinner pada Alur Checkout Reservasi**
+- [x] **Task 2.1: Proteksi Anti Double-Click & Spinner pada Alur Checkout Reservasi**
   - Pada `BookingConfirmDialog.tsx` dan `BookingClient.tsx`, tampilkan animasi `<Loader2 className="w-4 h-4 animate-spin" />` di samping teks proses saat `loading: true`.
   - Pastikan tombol terkunci (*disabled*) dan cursor berubah menjadi `cursor-not-allowed` selama proses inisiasi token pembayaran Midtrans berlangsung.
-- [ ] **Task 2.2: Standarisasi Loading Indikator pada Dialog Penarikan Saldo Host**
+- [x] **Task 2.2: Standarisasi Loading Indikator pada Dialog Penarikan Saldo Host**
   - Pada `WithdrawConfirmDialog.tsx`, sembunyikan ikon `<CheckCircle2 />` dan tampilkan `<Loader2 className="w-4 h-4 animate-spin" />` saat `loading: true`.
   - Kunci tombol Batal dan tombol Konfirmasi agar host tidak dapat menutup atau mengirim ulang request mutasi saat transfer sedang dikirim ke `/api/host/payouts`.
-- [ ] **Task 2.3: Standarisasi Loading & Disable Form pada Modal Putusan Admin**
+- [x] **Task 2.3: Standarisasi Loading & Disable Form pada Modal Putusan Admin**
   - Pada `DisputeResolutionDialog.tsx`, `RefundConfirmDialog.tsx`, `PayoutConfirmDialog.tsx`, dan `KycRejectDialog.tsx`:
     - Tampilkan spinner `<Loader2 className="w-4 h-4 animate-spin" />` pada tombol putusan utama.
     - Nonaktifkan (*disable*) seluruh elemen form (radio button alokasi dana, textarea catatan, input nomor referensi transfer) saat `loading: true` agar admin tidak mengubah data saat proses submit.
-- [ ] **Task 2.4: Proteksi Loading pada Form Properti, Profil, & Aksi Reservasi**
+- [x] **Task 2.4: Proteksi Loading pada Form Properti, Profil, & Aksi Reservasi**
   - Di `PropertyFormActions.tsx`, tambahkan animasi spinner pada tombol Terbitkan / Simpan Properti (`loading`) dan Hapus Properti (`deleting`).
   - Di `HostBookingActions.tsx` dan `GuestTripActions.tsx`, pasang `<RotateCw className="w-4 h-4 animate-spin" />` pada tombol verifikasi status pembayaran manual.
 
@@ -125,16 +125,16 @@ Menangani seluruh skenario ekstrem pada siklus pembayaran Midtrans (tamu menutup
 - `src/app/checkout/[id]/page.tsx`
 
 ### Checklist Task:
-- [ ] **Task 3.1: Penanganan Event `onClose` pada Midtrans Snap (Anti-Hanging)**
+- [x] **Task 3.1: Penanganan Event `onClose` pada Midtrans Snap (Anti-Hanging)**
   - Pada `CheckoutClient.tsx` (dan pop-up handler jika dipanggil di sisi klien), implementasikan callback `onClose: function ()`.
   - Jika pengguna menutup pop-up/iframe sebelum menyelesaikan transaksi:
     - Segera reset status loading pada tombol.
     - Munculkan toast notifikasi informasi: *"Pembayaran belum diselesaikan. Anda dapat melanjutkan pembayaran dalam 60 menit melalui halaman ini atau menu Perjalanan Saya di Dasbor."*
     - Jangan biarkan tombol atau layar berada dalam status terkunci.
-- [ ] **Task 3.2: Penanganan Status `onPending` (Instruksi Pembayaran Tertunda)**
+- [x] **Task 3.2: Penanganan Status `onPending` (Instruksi Pembayaran Tertunda)**
   - Pada callback `onPending`, berikan pesan panduan yang jelas: *"Pesanan Anda tersimpan. Silakan selesaikan pembayaran sesuai petunjuk metode yang dipilih sebelum batas waktu berakhir."*
   - Arahkan tamu ke tab Perjalanan Saya (`/dashboard?tab=trips`) dengan penanda visual status "Menunggu Pembayaran" (*Pending*).
-- [ ] **Task 3.3: Penanganan Status `onError` & Sinkronisasi Pembayaran**
+- [x] **Task 3.3: Penanganan Status `onError` & Sinkronisasi Pembayaran**
   - Ganti `alert(t.paymentFailed)` pada callback `onError` dengan dialog atau toast error yang informatif beserta tombol opsi "Coba Metode Pembayaran Lain".
   - Sediakan tombol manual "Cek Status Pembayaran" jika tamu merasa sudah membayar di aplikasi bank namun status belum terbarui secara otomatis.
 
@@ -155,15 +155,15 @@ Menyelaraskan validasi form sisi klien dengan pengerasan backend (Fase 8 & Fase 
 - `src/app/dashboard/components/dialogs/BlockDateDialog.tsx`
 
 ### Checklist Task:
-- [ ] **Task 4.1: Validasi Pre-Upload Ukuran & MIME Type Seragam (Client-Side Guard)**
+- [x] **Task 4.1: Validasi Pre-Upload Ukuran & MIME Type Seragam (Client-Side Guard)**
   - Standarisasi fungsi helper validasi upload berkas: hanya menerima MIME `image/jpeg`, `image/png`, `image/webp`, dan ukuran maksimal 5 MB (5 * 1024 * 1024 bytes).
   - Terapkan helper pada `ImageUpload.tsx`, `KycModal.tsx`, `RefundConfirmDialog.tsx`, `ProfileHeader.tsx`, dan `PersonalPhotoCard.tsx`.
   - Tolak file tidak valid langsung di peramban dengan pesan toast deskriptif sebelum memanggil `fetch('/api/upload')`, menghemat kuota transmisi jaringan dan resource server.
-- [ ] **Task 4.2: Validasi Anti-Past Date & Disabled Dates pada Input Tanggal Manual**
+- [x] **Task 4.2: Validasi Anti-Past Date & Disabled Dates pada Input Tanggal Manual**
   - Pada `BookingDateInputs.tsx` (`handleManualInput`), validasi tanggal yang diketik manual pengguna:
     - Jika `iso < todayStr` (tanggal sebelum hari ini dalam WIB), tolak input dan tampilkan toast *"Tanggal check-in tidak boleh berada di masa lalu"*.
     - Jika `iso` berada dalam daftar `disabledDatesList` (kamar sudah terpesan/diblokir), tolak input dan beri tahu pengguna bahwa tanggal tersebut tidak tersedia.
-- [ ] **Task 4.3: Validasi Preventif Bentrok Reservasi pada Dialog Blokir Tanggal Host**
+- [x] **Task 4.3: Validasi Preventif Bentrok Reservasi pada Dialog Blokir Tanggal Host**
   - Pada `BlockDateDialog.tsx`, pastikan pemilihan tanggal mulai dan selesai memvalidasi bahwa `startDate >= hari ini` dan `endDate > startDate`.
   - Berikan feedback langsung di formulir jika tanggal yang dipilih tidak logis sebelum host mengirimkan formulir ke server.
 

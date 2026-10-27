@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
-import { AlertTriangle, ShieldAlert, RotateCw } from "lucide-react"
+import { AlertTriangle, ShieldAlert, RotateCw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 
@@ -93,17 +93,17 @@ export default function HostBookingActions({
           type="button"
           onClick={handleSyncStatus}
           disabled={syncing}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           title={currentLang === "en" ? "Check payment status with Midtrans" : "Kroscek status pembayaran tamu dengan Midtrans"}
         >
-          <RotateCw className={cn("w-3 h-3", syncing && "animate-spin")} />
+          <RotateCw className={cn("w-4 h-4", syncing && "animate-spin")} />
           <span>{syncing ? (currentLang === "en" ? "Checking..." : "Memeriksa...") : (currentLang === "en" ? "Check Status" : "Cek Status")}</span>
         </button>
       )}
 
       {/* Tombol Batalkan Pesanan Tamu (jika belum selesai/batal) */}
       {!isCancelledOrCompleted && (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(nextOpen) => { if (!loading) setOpen(nextOpen) }}>
           <DialogTrigger className="text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline cursor-pointer">
             {t?.btnCancelGuest || (currentLang === "en" ? "Cancel Booking" : "Batalkan Reservasi")}
           </DialogTrigger>
@@ -152,7 +152,8 @@ export default function HostBookingActions({
                 <textarea 
                   required 
                   rows={3}
-                  className="w-full border border-gray-200 dark:border-gray-800 rounded-xl p-3 focus:border-rose-500 outline-none text-xs bg-white dark:bg-gray-900 font-medium" 
+                  disabled={loading}
+                  className="w-full border border-gray-200 dark:border-gray-800 rounded-xl p-3 focus:border-rose-500 outline-none text-xs bg-white dark:bg-gray-900 font-medium disabled:opacity-60 disabled:cursor-not-allowed" 
                   placeholder={t?.cancelReasonPlaceholder || (currentLang === "en" ? "Explain to the guest why you need to cancel this booking..." : "Beri tahu tamu alasan mendesak pembatalan ini (misal: kebocoran pipa darurat)...")}
                   value={reason}
                   onChange={e => setReason(e.target.value)}
@@ -165,18 +166,23 @@ export default function HostBookingActions({
                   variant="outline" 
                   onClick={() => setOpen(false)}
                   disabled={loading}
-                  className="rounded-xl text-xs font-medium"
+                  className="rounded-xl text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {currentLang === "en" ? "Back" : "Kembali"}
                 </Button>
                 <Button 
                   type="submit" 
-                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs" 
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5" 
                   disabled={loading || !reason.trim()}
                 >
-                  {loading 
-                    ? (t?.processing || (currentLang === "en" ? "Processing..." : "Memproses...")) 
-                    : (t?.confirmCancelBtn || (currentLang === "en" ? "Confirm Host Cancellation" : "Konfirmasi Pembatalan"))}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{t?.processing || (currentLang === "en" ? "Processing..." : "Memproses...")}</span>
+                    </>
+                  ) : (
+                    t?.confirmCancelBtn || (currentLang === "en" ? "Confirm Host Cancellation" : "Konfirmasi Pembatalan")
+                  )}
                 </Button>
               </div>
             </form>

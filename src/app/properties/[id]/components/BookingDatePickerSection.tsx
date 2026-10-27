@@ -107,6 +107,7 @@ export default function BookingDatePickerSection({
             diffDays={diffDays}
             currentLang={currentLang}
             selectDatesText={t.selectDates || "Pilih tanggal"}
+            disabledDatesList={disabledDatesList}
             onSelectTab={setActiveDateTab}
             onCheckInChange={onCheckInChange}
             onCheckOutChange={onCheckOutChange}

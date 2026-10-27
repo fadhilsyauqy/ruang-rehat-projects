@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { Scale } from "lucide-react"
+import { Scale, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -82,7 +82,7 @@ export default function DisputeResolutionDialog({
   }
 
   return (
-    <Dialog open={!!dispute} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!dispute} onOpenChange={(open) => !open && !loading && onClose()}>
       <DialogContent className="max-w-lg p-6 sm:p-7 rounded-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-1.5 pb-2">
           <div className="w-11 h-11 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center mb-1">
@@ -130,6 +130,7 @@ export default function DisputeResolutionDialog({
               <label
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all",
+                  loading && "opacity-60 cursor-not-allowed",
                   resolution === "RESOLVED_RELEASE_TO_HOST"
                     ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/30"
                     : "border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
@@ -139,6 +140,7 @@ export default function DisputeResolutionDialog({
                   type="radio"
                   name="disputeRes"
                   className="mt-0.5"
+                  disabled={loading}
                   checked={resolution === "RESOLVED_RELEASE_TO_HOST"}
                   onChange={() => setResolution("RESOLVED_RELEASE_TO_HOST")}
                 />
@@ -155,6 +157,7 @@ export default function DisputeResolutionDialog({
               <label
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all",
+                  loading && "opacity-60 cursor-not-allowed",
                   resolution === "RESOLVED_FULL_REFUND"
                     ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30"
                     : "border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
@@ -164,6 +167,7 @@ export default function DisputeResolutionDialog({
                   type="radio"
                   name="disputeRes"
                   className="mt-0.5"
+                  disabled={loading}
                   checked={resolution === "RESOLVED_FULL_REFUND"}
                   onChange={() => setResolution("RESOLVED_FULL_REFUND")}
                 />
@@ -180,6 +184,7 @@ export default function DisputeResolutionDialog({
               <label
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all",
+                  loading && "opacity-60 cursor-not-allowed",
                   resolution === "RESOLVED_PARTIAL_REFUND"
                     ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
                     : "border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
@@ -189,6 +194,7 @@ export default function DisputeResolutionDialog({
                   type="radio"
                   name="disputeRes"
                   className="mt-0.5"
+                  disabled={loading}
                   checked={resolution === "RESOLVED_PARTIAL_REFUND"}
                   onChange={() => setResolution("RESOLVED_PARTIAL_REFUND")}
                 />
@@ -205,6 +211,7 @@ export default function DisputeResolutionDialog({
               <label
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all",
+                  loading && "opacity-60 cursor-not-allowed",
                   resolution === "REJECTED"
                     ? "border-rose-600 bg-rose-50/50 dark:bg-rose-950/30"
                     : "border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
@@ -214,6 +221,7 @@ export default function DisputeResolutionDialog({
                   type="radio"
                   name="disputeRes"
                   className="mt-0.5"
+                  disabled={loading}
                   checked={resolution === "REJECTED"}
                   onChange={() => setResolution("REJECTED")}
                 />
@@ -242,13 +250,14 @@ export default function DisputeResolutionDialog({
                   </label>
                   <Input
                     type="number"
+                    disabled={loading}
                     value={refundApprovedIdr}
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0
                       setRefundApprovedIdr(val)
                       setPayoutApprovedIdr(Math.max(0, bookingTotal - val))
                     }}
-                    className="rounded-xl text-xs bg-white dark:bg-gray-900"
+                    className="rounded-xl text-xs bg-white dark:bg-gray-900 disabled:opacity-60"
                   />
                 </div>
                 <div>
@@ -257,11 +266,12 @@ export default function DisputeResolutionDialog({
                   </label>
                   <Input
                     type="number"
+                    disabled={loading}
                     value={payoutApprovedIdr}
                     onChange={(e) =>
                       setPayoutApprovedIdr(Number(e.target.value) || 0)
                     }
-                    className="rounded-xl text-xs bg-white dark:bg-gray-900"
+                    className="rounded-xl text-xs bg-white dark:bg-gray-900 disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -276,10 +286,11 @@ export default function DisputeResolutionDialog({
             <textarea
               required
               rows={3}
+              disabled={loading}
               placeholder="Tuliskan pertimbangan dan bukti yang ditemukan selama investigasi..."
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
-              className="w-full border border-gray-200 dark:border-gray-800 rounded-xl p-3 focus:border-purple-500 outline-none text-xs bg-white dark:bg-gray-900 font-medium"
+              className="w-full border border-gray-200 dark:border-gray-800 rounded-xl p-3 focus:border-purple-500 outline-none text-xs bg-white dark:bg-gray-900 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -289,16 +300,23 @@ export default function DisputeResolutionDialog({
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl text-xs"
+              className="rounded-xl text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Batal
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+              className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {loading ? "Menerapkan..." : "Terapkan Keputusan"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Menerapkan...</span>
+                </>
+              ) : (
+                "Terapkan Keputusan"
+              )}
             </Button>
           </div>
         </form>

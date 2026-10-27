@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { ArrowDownToLine, CreditCard, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react"
+import { ArrowDownToLine, CreditCard, AlertCircle, CheckCircle2, ShieldAlert, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatPrice } from "@/lib/format"
 import PayoutBalanceCards from "./PayoutBalanceCards"
@@ -311,10 +311,22 @@ export default function HostPayoutsTab({
                 isOverBalance ||
                 Boolean(currentUser && currentUser.kycStatus !== "VERIFIED")
               }
-              className="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-rose-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md shadow-rose-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <ArrowDownToLine className="w-4 h-4" />
-              <span>Lanjutkan Penarikan</span>
+              {payoutLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowDownToLine className="w-4 h-4" />
+              )}
+              <span>
+                {payoutLoading
+                  ? currentLang === "en"
+                    ? "Processing..."
+                    : "Memproses..."
+                  : currentLang === "en"
+                    ? "Proceed with Withdrawal"
+                    : "Lanjutkan Penarikan"}
+              </span>
             </button>
           </form>
         </div>

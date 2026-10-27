@@ -23,6 +23,8 @@ import {
   Loader2,
   X
 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { validateImageFile } from "@/lib/file-validation"
 
 interface KycModalProps {
   open: boolean
@@ -67,22 +69,14 @@ export default function KycModal({
     const file = e.target.files?.[0]
     if (!file) return
 
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setErrorMessage(
-        currentLang === "en"
-          ? "Only JPEG, PNG, or WebP images are allowed."
-          : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan."
-      )
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage(
-        currentLang === "en"
-          ? "File size exceeds 5 MB limit."
-          : "Ukuran file melebihi batas maksimal 5 MB."
-      )
+    const validation = validateImageFile(file, currentLang)
+    if (!validation.valid) {
+      setErrorMessage(validation.errorMessage || "")
+      toast({
+        variant: "destructive",
+        title: validation.errorTitle || (currentLang === "en" ? "Invalid File" : "File Tidak Valid"),
+        description: validation.errorMessage || "",
+      })
       return
     }
 

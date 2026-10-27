@@ -1,5 +1,5 @@
 import React from "react"
-import { Landmark, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Landmark, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import { formatPrice } from "@/lib/format"
 import type { Dictionary } from "@/lib/dictionary"
 import type { HostBankAccount } from "@prisma/client"
@@ -33,8 +33,16 @@ export default function WithdrawConfirmDialog({
   const amountInIdr = currentCurrency === "USD" ? Math.round(amountNum * 18051) : amountNum
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={() => {
+        if (!loading) onClose()
+      }}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-4">
           <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-500 flex items-center justify-center shrink-0">
             <Landmark className="w-6 h-6" />
@@ -98,7 +106,7 @@ export default function WithdrawConfirmDialog({
             type="button"
             disabled={loading}
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+            className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t.cancel || (currentLang === "en" ? "Cancel" : "Batal")}
           </button>
@@ -106,9 +114,13 @@ export default function WithdrawConfirmDialog({
             type="button"
             disabled={loading}
             onClick={onConfirm}
-            className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md shadow-rose-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md shadow-rose-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <CheckCircle2 className="w-4 h-4" />
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
             <span>
               {loading
                 ? currentLang === "en"

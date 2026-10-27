@@ -1,5 +1,6 @@
-import React from "react"
+import React, { useState } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
@@ -40,16 +41,30 @@ export default function BookingConfirmDialog({
   t,
   onConfirm,
 }: BookingConfirmDialogProps) {
+  const [open, setOpen] = useState(false)
+
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!loading) setOpen(nextOpen)
+      }}
+    >
       <DialogTrigger
         className={cn(
           buttonVariants({ variant: "default" }),
-          "w-full h-12 text-base rounded-2xl bg-rose-500 hover:bg-rose-600 font-bold transition-all shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          "w-full h-12 text-base rounded-2xl bg-rose-500 hover:bg-rose-600 font-bold transition-all shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         )}
-        disabled={disabled}
+        disabled={disabled || loading}
       >
-        {triggerLabel}
+        {loading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{t.confirming || (currentLang === "en" ? "Processing..." : "Memproses...")}</span>
+          </>
+        ) : (
+          triggerLabel
+        )}
       </DialogTrigger>
       <DialogContent className="rounded-3xl">
         <DialogHeader>
@@ -83,9 +98,16 @@ export default function BookingConfirmDialog({
         <Button
           onClick={onConfirm}
           disabled={loading}
-          className="w-full h-12 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold cursor-pointer"
+          className="w-full h-12 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {loading ? t.confirming : t.confirmAndPay}
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{t.confirming || (currentLang === "en" ? "Processing..." : "Memproses...")}</span>
+            </>
+          ) : (
+            t.confirmAndPay
+          )}
         </Button>
       </DialogContent>
     </Dialog>

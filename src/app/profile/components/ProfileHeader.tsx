@@ -18,6 +18,7 @@ import ProfileActivityMetrics from "./ProfileActivityMetrics"
 import type { ProfileUser, AdminStats } from "../types"
 import type { Dictionary } from "@/lib/dictionary"
 import { toast } from "@/components/ui/use-toast"
+import { validateImageFile } from "@/lib/file-validation"
 
 interface ProfileHeaderProps {
   user: ProfileUser
@@ -61,27 +62,12 @@ export default function ProfileHeader({
     const file = e.target.files?.[0]
     if (!file) return
 
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const validation = validateImageFile(file, currentLang)
+    if (!validation.valid) {
       toast({
         variant: "destructive",
-        title: currentLang === "en" ? "Format Not Supported" : "Format Tidak Didukung",
-        description:
-          currentLang === "en"
-            ? "Only JPEG, PNG, or WebP images are allowed."
-            : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan.",
-      })
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        variant: "destructive",
-        title: currentLang === "en" ? "File Too Large" : "Ukuran Terlalu Besar",
-        description:
-          currentLang === "en"
-            ? "File size exceeds 5 MB limit."
-            : "Ukuran file melebihi batas maksimal 5 MB.",
+        title: validation.errorTitle || (currentLang === "en" ? "Format Not Supported" : "Format Tidak Didukung"),
+        description: validation.errorMessage || "",
       })
       return
     }

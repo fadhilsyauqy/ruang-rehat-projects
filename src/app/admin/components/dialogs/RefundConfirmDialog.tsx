@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import type { AdminBookingItem } from "@/types"
 import { toast } from "@/components/ui/use-toast"
+import { validateImageFile } from "@/lib/file-validation"
 
 export interface RefundConfirmDialogProps {
   booking:
@@ -50,21 +51,12 @@ export default function RefundConfirmDialog({
     const file = e.target.files?.[0]
     if (!file) return
 
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const validation = validateImageFile(file, "id")
+    if (!validation.valid) {
       toast({
         variant: "destructive",
-        title: "Format Tidak Didukung",
-        description: "Hanya gambar dengan format JPEG, PNG, atau WebP yang diperbolehkan.",
-      })
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        variant: "destructive",
-        title: "Ukuran Terlalu Besar",
-        description: "Ukuran file bukti transfer melebihi batas maksimal 5 MB.",
+        title: validation.errorTitle || "File Tidak Valid",
+        description: validation.errorMessage || "File bukti transfer tidak valid.",
       })
       return
     }
@@ -110,7 +102,7 @@ export default function RefundConfirmDialog({
   }
 
   return (
-    <Dialog open={!!booking} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!booking} onOpenChange={(open) => !open && !loading && !uploadingProof && onClose()}>
       <DialogContent className="max-w-lg p-6 sm:p-7 rounded-3xl">
         <DialogHeader className="space-y-1.5 pb-2">
           <div className="w-11 h-11 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center mb-1">
@@ -161,10 +153,11 @@ export default function RefundConfirmDialog({
             <div className="flex gap-2">
               <Input
                 type="url"
+                disabled={loading || uploadingProof}
                 placeholder="https://... (Link foto bukti transfer m-Banking / BI-FAST)"
                 value={proofUrl}
                 onChange={(e) => setProofUrl(e.target.value)}
-                className="rounded-xl text-xs bg-white dark:bg-gray-900 flex-1"
+                className="rounded-xl text-xs bg-white dark:bg-gray-900 flex-1 disabled:opacity-60"
               />
               <Button
                 type="button"
@@ -172,7 +165,7 @@ export default function RefundConfirmDialog({
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading || uploadingProof}
-                className="rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1.5 h-9"
+                className="rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1.5 h-9 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploadingProof ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -187,6 +180,7 @@ export default function RefundConfirmDialog({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleUploadProof}
                 className="hidden"
+                disabled={loading || uploadingProof}
               />
             </div>
           </div>
@@ -196,17 +190,24 @@ export default function RefundConfirmDialog({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={loading}
-              className="rounded-xl text-xs"
+              disabled={loading || uploadingProof}
+              className="rounded-xl text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Batal
             </Button>
             <Button
               type="submit"
-              disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+              disabled={loading || uploadingProof}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {loading ? "Menyimpan..." : "Konfirmasi Telah Ditransfer"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                "Konfirmasi Telah Ditransfer"
+              )}
             </Button>
           </div>
         </form>

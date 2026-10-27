@@ -1,4 +1,5 @@
 import React from "react"
+import { Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -37,7 +38,7 @@ export default function KycRejectDialog({
   if (!user) return null
 
   return (
-    <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!user} onOpenChange={(open) => !open && !loading && onClose()}>
       <DialogContent className="rounded-3xl max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -58,6 +59,7 @@ export default function KycRejectDialog({
           </p>
           <textarea
             rows={3}
+            disabled={loading}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder={
@@ -65,7 +67,7 @@ export default function KycRejectDialog({
                 ? "e.g., Blurry ID photo, name mismatch, or invalid ID number..."
                 : "Contoh: Foto KTP buram, nama pemilik rekening tidak sesuai identitas resmi, atau NIK tidak valid..."
             }
-            className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs focus:outline-none focus:border-purple-500"
+            className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs focus:outline-none focus:border-purple-500 disabled:opacity-60 disabled:cursor-not-allowed"
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button
@@ -73,7 +75,7 @@ export default function KycRejectDialog({
               variant="ghost"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl text-xs"
+              className="rounded-xl text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t.cancel || (currentLang === "en" ? "Cancel" : "Batal")}
             </Button>
@@ -81,15 +83,18 @@ export default function KycRejectDialog({
               type="button"
               onClick={() => onConfirmReject(user.id, rejectReason)}
               disabled={loading}
-              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold"
+              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {loading
-                ? currentLang === "en"
-                  ? "Rejecting..."
-                  : "Menolak..."
-                : currentLang === "en"
-                ? "Confirm Rejection"
-                : "Konfirmasi Penolakan"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{currentLang === "en" ? "Rejecting..." : "Menolak..."}</span>
+                </>
+              ) : currentLang === "en" ? (
+                "Confirm Rejection"
+              ) : (
+                "Konfirmasi Penolakan"
+              )}
             </Button>
           </div>
         </div>
