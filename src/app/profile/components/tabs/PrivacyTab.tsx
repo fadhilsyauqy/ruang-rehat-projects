@@ -6,6 +6,7 @@ import { CheckCircle2, Download, Database } from "lucide-react"
 import { updatePrivacySettings } from "@/app/actions/preferences"
 import DeactivateAccountModal from "../dialogs/DeactivateAccountModal"
 import type { ProfileUser } from "../../types"
+import { toast } from "@/components/ui/use-toast"
 
 interface PrivacyTabProps {
   user: ProfileUser
@@ -44,13 +45,22 @@ export default function PrivacyTab({
         hideSearchEngines: updatedSearch,
         readReceipts: readReceipts
       })
-      setPrivacySuccessMsg(
+      const successText =
         currentLang === "en" ? "Privacy settings updated" : "Pengaturan privasi berhasil disimpan"
-      )
+      setPrivacySuccessMsg(successText)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Privacy Saved" : "Privasi Disimpan",
+        description: successText,
+      })
       setTimeout(() => setPrivacySuccessMsg(""), 3000)
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message || "Gagal memperbarui pengaturan privasi")
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
+        description: error.message || (currentLang === "en" ? "Failed to update privacy settings" : "Gagal memperbarui pengaturan privasi"),
+      })
     } finally {
       setSavingPrivacy(false)
     }
@@ -70,9 +80,18 @@ export default function PrivacyTab({
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Data Exported" : "Data Diekspor",
+        description: currentLang === "en" ? "Your personal data archive has been downloaded." : "Arsip data pribadi Anda berhasil diunduh.",
+      })
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message || "Gagal mengunduh arsip data pribadi")
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Export Failed" : "Gagal Mengunduh Data",
+        description: error.message || (currentLang === "en" ? "Failed to download personal data archive" : "Gagal mengunduh arsip data pribadi"),
+      })
     } finally {
       setExportingData(false)
     }

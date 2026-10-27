@@ -17,6 +17,7 @@ import { updateProfile } from "@/app/actions/preferences"
 import ProfileActivityMetrics from "./ProfileActivityMetrics"
 import type { ProfileUser, AdminStats } from "../types"
 import type { Dictionary } from "@/lib/dictionary"
+import { toast } from "@/components/ui/use-toast"
 
 interface ProfileHeaderProps {
   user: ProfileUser
@@ -62,20 +63,26 @@ export default function ProfileHeader({
 
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
     if (!ALLOWED_TYPES.includes(file.type)) {
-      alert(
-        currentLang === "en"
-          ? "Only JPEG, PNG, or WebP images are allowed."
-          : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan."
-      )
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Format Not Supported" : "Format Tidak Didukung",
+        description:
+          currentLang === "en"
+            ? "Only JPEG, PNG, or WebP images are allowed."
+            : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan.",
+      })
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert(
-        currentLang === "en"
-          ? "File size exceeds 5 MB limit."
-          : "Ukuran file melebihi batas maksimal 5 MB."
-      )
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "File Too Large" : "Ukuran Terlalu Besar",
+        description:
+          currentLang === "en"
+            ? "File size exceeds 5 MB limit."
+            : "Ukuran file melebihi batas maksimal 5 MB.",
+      })
       return
     }
 
@@ -100,10 +107,19 @@ export default function ProfileHeader({
       await updateProfile(updateData)
 
       setImage(data.url)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Photo Updated" : "Foto Diperbarui",
+        description: t.photoUploadedSuccess || (currentLang === "en" ? "Profile photo updated successfully!" : "Foto profil berhasil diperbarui!"),
+      })
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message || (currentLang === "en" ? "Failed to upload image. Please check file format." : "Gagal mengunggah gambar. Pastikan format file sesuai."))
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Upload Failed" : "Gagal Mengunggah",
+        description: error.message || (currentLang === "en" ? "Failed to upload image. Please check file format." : "Gagal mengunggah gambar. Pastikan format file sesuai."),
+      })
     } finally {
       setUploadingImage(false)
     }

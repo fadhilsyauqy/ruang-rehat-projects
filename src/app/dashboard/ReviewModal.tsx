@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
 import { Star, CheckCircle2, Loader2, Sparkles } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 export default function ReviewModal({ 
   bookingId, 
@@ -39,7 +40,11 @@ export default function ReviewModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!comment.trim()) {
-      alert(currentLang === "en" ? "Please write your review comment." : "Harap tuliskan ulasan pengalaman Anda.")
+      toast({
+        variant: "warning",
+        title: currentLang === "en" ? "Review Incomplete" : "Ulasan Belum Lengkap",
+        description: currentLang === "en" ? "Please write your review comment." : "Harap tuliskan ulasan pengalaman Anda.",
+      })
       return
     }
 
@@ -55,13 +60,22 @@ export default function ReviewModal({
       if (!res.ok) throw new Error(data.error || "Gagal mengirimkan ulasan")
       
       setSuccess(true)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Review Submitted" : "Ulasan Terkirim",
+        description: t?.reviewSubmittedSuccess || (currentLang === "en" ? "Review submitted successfully!" : "Ulasan berhasil dikirim!"),
+      })
       setTimeout(() => {
         setOpen(false)
         setSuccess(false)
         router.refresh()
       }, 1500)
     } catch (error: any) {
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Review Failed" : "Gagal Mengirim Ulasan",
+        description: error.message || (currentLang === "en" ? "Failed to submit review" : "Gagal mengirimkan ulasan"),
+      })
     } finally {
       setLoading(false)
     }

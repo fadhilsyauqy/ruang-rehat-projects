@@ -8,6 +8,7 @@ import Link from "next/link"
 import { formatPrice } from "@/lib/format"
 import { calculateStayNights, formatWibDate } from "@/lib/date-standards"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
 
 export default function CheckoutClient({ 
   booking, 
@@ -83,7 +84,13 @@ export default function CheckoutClient({
             router.push('/dashboard')
           },
           onError: function () {
-            alert(t.paymentFailed || "Pembayaran Gagal!")
+            toast({
+              variant: "destructive",
+              title: t.paymentFailed || (currentLang === "en" ? "Payment Failed" : "Pembayaran Gagal"),
+              description: currentLang === "en"
+                ? "Payment could not be completed. Please try another payment method."
+                : "Pembayaran tidak dapat diselesaikan. Silakan coba metode pembayaran lain.",
+            })
           }
         })
       }

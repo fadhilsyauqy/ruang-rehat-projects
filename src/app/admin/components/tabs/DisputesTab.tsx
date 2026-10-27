@@ -16,6 +16,7 @@ import type { AdminDisputeItem } from "@/types"
 import DisputeResolutionDialog, {
   type DisputeResolutionType,
 } from "../dialogs/DisputeResolutionDialog"
+import { toast } from "@/components/ui/use-toast"
 
 export interface DisputesTabProps {
   disputesList: AdminDisputeItem[]
@@ -63,11 +64,23 @@ export default function DisputesTab({
       if (data.dispute && onDisputeResolved) {
         onDisputeResolved(data.dispute)
       }
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Dispute Resolved" : "Sengketa Diselesaikan",
+        description:
+          currentLang === "en"
+            ? `Dispute resolution applied: ${params.resolution}.`
+            : `Resolusi sengketa berhasil diterapkan: ${params.resolution}.`,
+      })
       setSelectedDispute(null)
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Dispute Resolution Failed" : "Gagal Memproses Sengketa",
+        description: error.message,
+      })
     } finally {
       setLoadingAction(null)
     }

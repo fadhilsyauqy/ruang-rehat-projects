@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { AlertTriangle, ShieldAlert, RotateCw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "@/components/ui/use-toast"
 
 export default function HostBookingActions({ 
   booking, 
@@ -32,12 +33,20 @@ export default function HostBookingActions({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || (currentLang === "en" ? "Failed to verify status" : "Gagal memverifikasi status"))
-      alert(data.message)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Status Checked" : "Status Terverifikasi",
+        description: data.message,
+      })
       if (data.updated) {
         router.refresh()
       }
     } catch (e: any) {
-      alert(e.message || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran"))
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Error Checking Payment" : "Gagal Memeriksa Pembayaran",
+        description: e.message || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran"),
+      })
     } finally {
       setSyncing(false)
     }
@@ -55,13 +64,19 @@ export default function HostBookingActions({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t?.failedToCancel || (currentLang === "en" ? "Failed to cancel booking" : "Gagal membatalkan pesanan"))
       
-      if (data.policyNote) {
-        alert(data.policyNote)
-      }
+      toast({
+        variant: "info",
+        title: currentLang === "en" ? "Booking Cancelled" : "Pesanan Dibatalkan",
+        description: data.policyNote || (currentLang === "en" ? "Booking cancelled successfully." : "Pesanan berhasil dibatalkan."),
+      })
       setOpen(false)
       router.refresh()
     } catch (e: any) {
-      alert(e.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Cancellation Failed" : "Gagal Membatalkan",
+        description: e.message || (currentLang === "en" ? "Failed to cancel booking" : "Gagal membatalkan pesanan"),
+      })
     } finally {
       setLoading(false)
     }

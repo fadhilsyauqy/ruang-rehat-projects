@@ -3,6 +3,7 @@ import { Lock } from "lucide-react"
 import { getWibDateString } from "@/lib/date-standards"
 import type { Dictionary } from "@/lib/dictionary"
 import type { BlockedDateItem } from "@/types"
+import { toast } from "@/components/ui/use-toast"
 
 export interface BlockDateDialogProps {
   properties: Array<{ id: string; title: string }>
@@ -29,10 +30,15 @@ export default function BlockDateDialog({
   const handleCreateBlockedDate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPropertyId || !blockStartDate || !blockEndDate) {
-      alert(
-        t.selectPropertyAndDatesAlert ||
-          "Harap pilih properti serta tanggal mulai dan tanggal selesai."
-      )
+      toast({
+        variant: "warning",
+        title: currentLang === "en" ? "Incomplete Selection" : "Data Tidak Lengkap",
+        description:
+          t.selectPropertyAndDatesAlert ||
+          (currentLang === "en"
+            ? "Please select a property, start date, and end date."
+            : "Harap pilih properti serta tanggal mulai dan tanggal selesai."),
+      })
       return
     }
 
@@ -69,13 +75,22 @@ export default function BlockDateDialog({
       setBlockStartDate("")
       setBlockEndDate("")
       setBlockReason("")
-      alert(
-        t.datesBlockedSuccess ||
-          "Tanggal berhasil diblokir! Tamu tidak dapat memesan pada rentang tanggal tersebut."
-      )
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Dates Blocked" : "Tanggal Diblokir",
+        description:
+          t.datesBlockedSuccess ||
+          (currentLang === "en"
+            ? "Dates blocked successfully! Guests cannot book during this period."
+            : "Tanggal berhasil diblokir! Tamu tidak dapat memesan pada rentang tanggal tersebut."),
+      })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Gagal memblokir tanggal"
-      alert(message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Failed to Block Dates" : "Gagal Memblokir",
+        description: message,
+      })
     } finally {
       setBlockingLoading(false)
     }

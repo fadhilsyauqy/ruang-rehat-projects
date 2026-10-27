@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, X } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 interface DeactivateAccountModalProps {
   open: boolean
@@ -17,11 +18,14 @@ export default function DeactivateAccountModal({
   if (!open) return null
 
   const handleConfirm = () => {
-    alert(
-      currentLang === "en"
-        ? "Deactivation request received. If you have no active bookings, support will finalize your request."
-        : "Permintaan deaktivasi diterima. Akun akan dinonaktifkan setelah verifikasi riwayat transaksi."
-    )
+    toast({
+      variant: "info",
+      title: currentLang === "en" ? "Deactivation Requested" : "Permintaan Deaktivasi",
+      description:
+        currentLang === "en"
+          ? "Deactivation request received. If you have no active bookings, support will finalize your request."
+          : "Permintaan deaktivasi diterima. Akun akan dinonaktifkan setelah verifikasi riwayat transaksi.",
+    })
     onClose()
   }
 

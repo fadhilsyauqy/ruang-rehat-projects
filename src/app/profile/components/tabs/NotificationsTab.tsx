@@ -4,6 +4,7 @@ import { useState } from "react"
 import { CheckCircle2, Mail, Bell } from "lucide-react"
 import { updateNotificationSettings } from "@/app/actions/preferences"
 import type { ProfileUser } from "../../types"
+import { toast } from "@/components/ui/use-toast"
 
 interface NotificationsTabProps {
   user: ProfileUser
@@ -47,12 +48,21 @@ export default function NotificationsTab({
         notifyHostBooking: upHostBook,
         notifyHostPayout: upPayout
       })
-      setNotifySuccessMsg(
+      const successMsg =
         currentLang === "en" ? "Notification settings updated" : "Pengaturan notifikasi berhasil disimpan"
-      )
+      setNotifySuccessMsg(successMsg)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Settings Saved" : "Pengaturan Disimpan",
+        description: successMsg,
+      })
       setTimeout(() => setNotifySuccessMsg(""), 3000)
     } catch (err: any) {
-      alert(err.message || "Gagal memperbarui pengaturan notifikasi")
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
+        description: err.message || (currentLang === "en" ? "Failed to update notification settings" : "Gagal memperbarui pengaturan notifikasi"),
+      })
     } finally {
       setSavingNotify(false)
     }

@@ -3,6 +3,8 @@ import { CalendarX, CalendarDays, Calendar, Lock, Unlock } from "lucide-react"
 import BlockDateDialog from "../dialogs/BlockDateDialog"
 import type { Dictionary } from "@/lib/dictionary"
 import type { BlockedDateItem } from "@/types"
+import { toast } from "@/components/ui/use-toast"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export interface AvailabilityTabProps {
   properties: Array<{ id: string; title: string }>
@@ -25,26 +27,45 @@ export default function AvailabilityTab({
     properties[0]?.id || ""
   )
   const [unblockingId, setUnblockingId] = useState<string | null>(null)
+  const [unblockTargetId, setUnblockTargetId] = useState<string | null>(null)
 
-  const handleRemoveBlockedDate = async (id: string) => {
-    if (
-      !confirm(
-        t.confirmUnblock ||
-          "Buka kembali tanggal ini agar dapat dipesan oleh tamu?"
-      )
-    )
-      return
+  const handleRemoveBlockedDate = (id: string) => {
+    setUnblockTargetId(id)
+  }
 
-    setUnblockingId(id)
+  const executeUnblock = async () => {
+    if (!unblockTargetId) return
+
+    setUnblockingId(unblockTargetId)
     try {
-      const res = await fetch(`/api/properties/blocked-dates?id=${id}`, {
+      const res = await fetch(`/api/properties/blocked-dates?id=${unblockTargetId}`, {
         method: "DELETE",
       })
       if (!res.ok) throw new Error("Gagal membuka blokir")
 
-      onBlockedDateRemoved(id)
-    } catch {
-      alert("Gagal membuka blokir tanggal")
+      onBlockedDateRemoved(unblockTargetId)
+      toast({
+        variant: "success",
+        title: t.toastSuccess || (currentLang === "en" ? "Success" : "Berhasil"),
+        description:
+          t.unblockDateSuccess ||
+          (currentLang === "en"
+            ? "Dates unblocked successfully."
+            : "Blokir tanggal berhasil dibuka."),
+      })
+      setUnblockTargetId(null)
+    } catch (err: unknown) {
+      const errObj = err as Error
+      toast({
+        variant: "destructive",
+        title: t.toastError || (currentLang === "en" ? "Error" : "Terjadi Kesalahan"),
+        description:
+          errObj.message ||
+          t.unblockDateFailed ||
+          (currentLang === "en"
+            ? "Failed to unblock dates"
+            : "Gagal membuka blokir tanggal"),
+      })
     } finally {
       setUnblockingId(null)
     }
@@ -159,6 +180,24 @@ export default function AvailabilityTab({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!unblockTargetId}
+        onOpenChange={(open: boolean) => !open && setUnblockTargetId(null)}
+        title={t.unblockDateTitle || (currentLang === "en" ? "Unblock Dates" : "Buka Blokir Tanggal")}
+        description={
+          t.unblockDateDesc ||
+          t.confirmUnblock ||
+          (currentLang === "en"
+            ? "Are you sure you want to unblock this date range? The room will be available again for guest booking."
+            : "Apakah Anda yakin ingin membuka blokir tanggal ini? Kamar akan kembali tersedia untuk disewa tamu.")
+        }
+        confirmLabel={t.unblockDateTitle || (currentLang === "en" ? "Unblock Dates" : "Buka Blokir")}
+        cancelLabel={t.cancelAction || (currentLang === "en" ? "Cancel" : "Batal")}
+        variant="warning"
+        loading={!!unblockingId}
+        onConfirm={executeUnblock}
+      />
     </div>
   )
 }

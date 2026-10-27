@@ -17,6 +17,7 @@ import {
   checkRangeOverlap,
   calculateBookingPricing,
 } from "./components/booking.utils"
+import { toast } from "@/components/ui/use-toast"
 
 export interface BookingClientProperty {
   id: string
@@ -77,17 +78,32 @@ export default function BookingClient({
 
   const handleBooking = async () => {
     if (!sessionUser) {
-      alert(currentLang === "en" ? "Please login first" : "Silakan login terlebih dahulu")
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Sign In Required" : "Perlu Masuk Akun",
+        description: currentLang === "en" ? "Please sign in to book this accommodation." : "Silakan login terlebih dahulu.",
+      })
       return router.push("/signin")
     }
     if (!checkInStr || !checkOutStr || !dateFrom || !dateTo) return
-    if (isOverlapping) return alert(t.rangeOverlapsDisabled)
+    if (isOverlapping) {
+      toast({
+        variant: "destructive",
+        title: t.datesUnavailable || (currentLang === "en" ? "Dates Unavailable" : "Tanggal Tidak Tersedia"),
+        description: t.rangeOverlapsDisabled,
+      })
+      return
+    }
     if (isExceedingMaxStay) {
-      return alert(
-        currentLang === "en"
-          ? `Maximum stay duration is ${maxStay} nights per transaction.`
-          : `Batas menginap maksimal adalah ${maxStay} malam per transaksi.`
-      )
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Max Stay Exceeded" : "Batas Menginap Terlampaui",
+        description:
+          currentLang === "en"
+            ? `Maximum stay duration is ${maxStay} nights per transaction.`
+            : `Batas menginap maksimal adalah ${maxStay} malam per transaksi.`,
+      })
+      return
     }
 
     setLoading(true)
@@ -107,7 +123,11 @@ export default function BookingClient({
       if (!res.ok) throw new Error(data.error || "Gagal memproses pembayaran")
       router.push(`/checkout/${data.bookingId}?token=${data.token}`)
     } catch (error: unknown) {
-      alert(error instanceof Error ? error.message : "Gagal memproses reservasi")
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Reservation Failed" : "Gagal Memproses Reservasi",
+        description: error instanceof Error ? error.message : "Gagal memproses reservasi",
+      })
     } finally {
       setLoading(false)
     }

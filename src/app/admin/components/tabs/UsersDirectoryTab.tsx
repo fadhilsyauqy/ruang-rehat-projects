@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import type { AdminUserItem } from "@/types"
+import { toast } from "@/components/ui/use-toast"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export interface UsersDirectoryTabProps {
   initialUsers: AdminUserItem[]
@@ -20,6 +22,11 @@ export default function UsersDirectoryTab({
   const [userSearch, setUserSearch] = useState("")
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [pendingRoleChange, setPendingRoleChange] = useState<{
+    userId: string
+    userName: string
+    newRole: "GUEST" | "HOST" | "ADMIN"
+  } | null>(null)
 
   const promoSubscribersCount = initialUsers.filter(
     (u) => u.notifyPromoMarketing
@@ -44,26 +51,35 @@ export default function UsersDirectoryTab({
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
+
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Export Completed" : "Ekspor Berhasil",
+        description: currentLang === "en" ? "Subscriber CSV exported successfully." : "Berkas CSV pelanggan promo berhasil diunduh.",
+      })
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Export Failed" : "Gagal Mengunduh CSV",
+        description: error.message,
+      })
     } finally {
       setIsExporting(false)
     }
   }
 
-  const handleUpdateRole = async (
+  const handleUpdateRole = (
     userId: string,
+    userName: string,
     newRole: "GUEST" | "HOST" | "ADMIN"
   ) => {
-    if (
-      !confirm(
-        currentLang === "en"
-          ? `Change role to ${newRole}?`
-          : `Ubah role akun ini menjadi ${newRole}?`
-      )
-    )
-      return
+    setPendingRoleChange({ userId, userName, newRole })
+  }
+
+  const executeRoleUpdate = async () => {
+    if (!pendingRoleChange) return
+    const { userId, newRole, userName } = pendingRoleChange
     setLoadingAction(`role-${userId}`)
     try {
       const res = await fetch(`/api/admin/users/${userId}/role`, {
@@ -73,10 +89,24 @@ export default function UsersDirectoryTab({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Gagal mengubah role")
+
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Role Updated" : "Peran Diperbarui",
+        description:
+          currentLang === "en"
+            ? `Role for ${userName} changed to ${newRole}.`
+            : `Peran akun ${userName} berhasil diubah menjadi ${newRole}.`,
+      })
+      setPendingRoleChange(null)
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Role Update Failed" : "Gagal Mengubah Peran",
+        description: error.message,
+      })
     } finally {
       setLoadingAction(null)
     }
@@ -176,6 +206,7 @@ export default function UsersDirectoryTab({
                 onChange={(e) =>
                   handleUpdateRole(
                     u.id,
+                    u.name || u.email || "Pengguna",
                     e.target.value as "GUEST" | "HOST" | "ADMIN"
                   )
                 }
@@ -190,6 +221,24 @@ export default function UsersDirectoryTab({
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingRoleChange}
+        onOpenChange={(open: boolean) => !open && setPendingRoleChange(null)}
+        title={currentLang === "en" ? "Change User Role" : "Ubah Peran Pengguna"}
+        description={
+          pendingRoleChange
+            ? currentLang === "en"
+              ? `Are you sure you want to change the role of ${pendingRoleChange.userName} to ${pendingRoleChange.newRole}?`
+              : `Apakah Anda yakin ingin mengubah peran akun ${pendingRoleChange.userName} menjadi ${pendingRoleChange.newRole}?`
+            : ""
+        }
+        confirmLabel={currentLang === "en" ? "Change Role" : "Ubah Peran"}
+        cancelLabel={currentLang === "en" ? "Cancel" : "Batal"}
+        variant={pendingRoleChange?.newRole === "ADMIN" ? "warning" : "default"}
+        loading={!!loadingAction?.startsWith("role-")}
+        onConfirm={executeRoleUpdate}
+      />
     </div>
   )
 }

@@ -12,6 +12,7 @@ import PersonalKycCard from "./PersonalKycCard"
 import ResidentialAddressCard from "./ResidentialAddressCard"
 import EmergencyContactCard from "./EmergencyContactCard"
 import type { ProfileUser } from "../../../types"
+import { toast } from "@/components/ui/use-toast"
 
 interface PersonalInfoTabProps {
   user: ProfileUser
@@ -78,10 +79,19 @@ export default function PersonalInfoTab({
 
       await updateProfile(formData)
       setEditingSection(null)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Profile Updated" : "Profil Diperbarui",
+        description: currentLang === "en" ? "Your personal information has been updated." : "Informasi profil pribadi Anda berhasil disimpan.",
+      })
       if (onProfileSuccess) onProfileSuccess()
       router.refresh()
     } catch (err: any) {
-      alert(err.message || (currentLang === "en" ? "Failed to update profile" : "Gagal memperbarui profil"))
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
+        description: err.message || (currentLang === "en" ? "Failed to update profile" : "Gagal memperbarui profil"),
+      })
     } finally {
       setLoadingProfile(false)
     }

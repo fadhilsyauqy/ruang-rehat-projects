@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Ruang Rehat",
@@ -45,6 +46,7 @@ export default function RootLayout({
           <main className="flex-1">
             {children}
           </main>
+          <ToastProvider />
         </ThemeProvider>
       </body>
     </html>

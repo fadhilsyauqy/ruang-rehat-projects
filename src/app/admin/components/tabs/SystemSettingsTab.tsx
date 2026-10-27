@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import { formatWibDate } from "@/lib/date-standards"
 import FeeSimulatorCard from "../settings/FeeSimulatorCard"
+import { toast } from "@/components/ui/use-toast"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export interface SettingData {
   usdExchangeRate: number
@@ -49,6 +51,7 @@ export default function SystemSettingsTab({
   const [isSavingSetting, setIsSavingSetting] = useState(false)
   const [settingSuccessMsg, setSettingSuccessMsg] = useState("")
   const [settingErrorMsg, setSettingErrorMsg] = useState("")
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,24 +74,33 @@ export default function SystemSettingsTab({
           ? "System settings updated successfully!"
           : "Pengaturan sistem berhasil disimpan!"
       )
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Settings Saved" : "Pengaturan Disimpan",
+        description:
+          currentLang === "en"
+            ? "System parameters updated successfully!"
+            : "Pengaturan parameter sistem berhasil diperbarui!",
+      })
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
       setSettingErrorMsg(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Failed to Save" : "Gagal Menyimpan",
+        description: error.message,
+      })
     } finally {
       setIsSavingSetting(false)
     }
   }
 
   const handleResetDefaultSettings = () => {
-    if (
-      !confirm(
-        currentLang === "en"
-          ? "Reset all parameters to system defaults?"
-          : "Kembalikan semua parameter ke nilai standar default sistem?"
-      )
-    )
-      return
+    setIsResetConfirmOpen(true)
+  }
+
+  const executeResetDefaults = () => {
     const defaultSettings: SettingData = {
       usdExchangeRate: 18051,
       guestServiceFeePct: 10.0,
@@ -101,6 +113,15 @@ export default function SystemSettingsTab({
     if (onSettingUpdated) onSettingUpdated(defaultSettings)
     setSettingSuccessMsg("")
     setSettingErrorMsg("")
+    setIsResetConfirmOpen(false)
+    toast({
+      variant: "info",
+      title: currentLang === "en" ? "Settings Reset" : "Pengaturan Direset",
+      description:
+        currentLang === "en"
+          ? "All parameters reset to system defaults."
+          : "Seluruh parameter telah dikembalikan ke nilai standar bawaan sistem.",
+    })
   }
 
   return (
@@ -521,6 +542,21 @@ export default function SystemSettingsTab({
           currentLang={currentLang}
         />
       </form>
+
+      <ConfirmDialog
+        open={isResetConfirmOpen}
+        onOpenChange={setIsResetConfirmOpen}
+        title={currentLang === "en" ? "Reset System Parameters" : "Reset Parameter Sistem"}
+        description={
+          currentLang === "en"
+            ? "Are you sure you want to reset all platform fees, thresholds, and penalty rates to system defaults? This cannot be undone."
+            : "Apakah Anda yakin ingin mengembalikan seluruh fee platform, ambang batas, dan tarif penalti ke nilai standar bawaan sistem? Tindakan ini tidak dapat dibatalkan."
+        }
+        confirmLabel={currentLang === "en" ? "Reset to Defaults" : "Kembalikan ke Default"}
+        cancelLabel={currentLang === "en" ? "Cancel" : "Batal"}
+        variant="warning"
+        onConfirm={executeResetDefaults}
+      />
     </div>
   )
 }

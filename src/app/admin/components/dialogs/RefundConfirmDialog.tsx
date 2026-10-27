@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import type { AdminBookingItem } from "@/types"
+import { toast } from "@/components/ui/use-toast"
 
 export interface RefundConfirmDialogProps {
   booking:
@@ -51,12 +52,20 @@ export default function RefundConfirmDialog({
 
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
     if (!ALLOWED_TYPES.includes(file.type)) {
-      alert("Hanya gambar dengan format JPEG, PNG, atau WebP yang diperbolehkan.")
+      toast({
+        variant: "destructive",
+        title: "Format Tidak Didukung",
+        description: "Hanya gambar dengan format JPEG, PNG, atau WebP yang diperbolehkan.",
+      })
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file bukti transfer melebihi batas maksimal 5 MB.")
+      toast({
+        variant: "destructive",
+        title: "Ukuran Terlalu Besar",
+        description: "Ukuran file bukti transfer melebihi batas maksimal 5 MB.",
+      })
       return
     }
 
@@ -77,9 +86,18 @@ export default function RefundConfirmDialog({
       }
 
       setProofUrl(data.url)
+      toast({
+        variant: "success",
+        title: "Bukti Diunggah",
+        description: "Bukti transfer refund berhasil diunggah.",
+      })
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message || "Gagal mengunggah bukti transfer")
+      toast({
+        variant: "destructive",
+        title: "Gagal Mengunggah",
+        description: error.message || "Gagal mengunggah bukti transfer",
+      })
     } finally {
       setUploadingProof(false)
       if (fileInputRef.current) fileInputRef.current.value = ""

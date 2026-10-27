@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { AdminPayoutItem } from "@/types"
 import PayoutConfirmDialog from "../dialogs/PayoutConfirmDialog"
+import { toast } from "@/components/ui/use-toast"
 
 export interface PayoutsTabProps {
   initialPayouts: AdminPayoutItem[]
@@ -54,11 +55,23 @@ export default function PayoutsTab({
           )
         )
       }
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Payout Updated" : "Payout Diperbarui",
+        description:
+          currentLang === "en"
+            ? `Payout request updated to ${status}.`
+            : `Permintaan pencairan dana diperbarui menjadi ${status}.`,
+      })
       setSelectedPayoutForApproval(null)
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Payout Update Failed" : "Gagal Memperbarui Payout",
+        description: error.message,
+      })
     } finally {
       setLoadingAction(null)
     }

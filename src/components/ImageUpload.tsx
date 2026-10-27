@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import { ImagePlus, X, Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 interface ImageUploadProps {
   value: string[]
@@ -27,12 +28,20 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         const file = files[i]
 
         if (!ALLOWED_TYPES.includes(file.type)) {
-          alert(`File "${file.name}" tidak didukung. Hanya JPEG, PNG, dan WebP yang diizinkan.`)
+          toast({
+            variant: "destructive",
+            title: "Format Tidak Didukung",
+            description: `File "${file.name}" tidak didukung. Hanya JPEG, PNG, dan WebP yang diizinkan.`,
+          })
           continue
         }
 
         if (file.size > MAX_SIZE) {
-          alert(`File "${file.name}" melebihi batas ukuran maksimal 5 MB.`)
+          toast({
+            variant: "destructive",
+            title: "Ukuran Terlalu Besar",
+            description: `File "${file.name}" melebihi batas ukuran maksimal 5 MB.`,
+          })
           continue
         }
 
@@ -56,10 +65,19 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
 
       if (newUrls.length > 0) {
         onChange([...value, ...newUrls])
+        toast({
+          variant: "success",
+          title: "Berhasil",
+          description: `${newUrls.length} gambar berhasil diunggah.`,
+        })
       }
     } catch (error: unknown) {
       const err = error as Error
-      alert("Gagal mengunggah gambar: " + err.message)
+      toast({
+        variant: "destructive",
+        title: "Gagal Mengunggah",
+        description: err.message,
+      })
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) {

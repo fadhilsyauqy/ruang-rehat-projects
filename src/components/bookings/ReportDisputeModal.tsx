@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { toEscrowReleaseDateTimeWIB, formatWibDateTime } from "@/lib/date-standards"
 import { AlertTriangle, Clock, Info, Loader2, ShieldAlert, X } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 interface ReportDisputeModalProps {
   booking: any
@@ -91,9 +92,13 @@ export default function ReportDisputeModal({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Gagal mengajukan laporan sengketa")
 
-      alert(currentLang === "en" 
-        ? "Dispute reported successfully. Escrow payout has been frozen pending Admin investigation." 
-        : "Laporan sengketa berhasil diajukan. Penyaluran dana escrow telah dibekukan sementara hingga investigasi Admin.")
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Dispute Submitted" : "Sengketa Diajukan",
+        description: currentLang === "en" 
+          ? "Dispute reported successfully. Escrow payout has been frozen pending Admin investigation." 
+          : "Laporan sengketa berhasil diajukan. Penyaluran dana escrow telah dibekukan sementara hingga investigasi Admin."
+      })
 
       setOpen(false)
       router.refresh()

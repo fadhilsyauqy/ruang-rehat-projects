@@ -20,6 +20,7 @@ import type { AdminUserItem } from "@/types"
 import type { Dictionary } from "@/lib/dictionary"
 import KycRejectDialog from "../dialogs/KycRejectDialog"
 import KtpPreviewDialog from "../dialogs/KtpPreviewDialog"
+import { toast } from "@/components/ui/use-toast"
 
 export interface KycAuditTabProps {
   initialUsers: AdminUserItem[]
@@ -56,11 +57,23 @@ export default function KycAuditTab({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Gagal memperbarui status KYC")
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "KYC Status Updated" : "Status KYC Diperbarui",
+        description:
+          currentLang === "en"
+            ? `KYC status updated to ${status}.`
+            : `Status verifikasi KYC berhasil diperbarui menjadi ${status}.`,
+      })
       setSelectedKycUser(null)
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "KYC Update Failed" : "Gagal Memperbarui KYC",
+        description: error.message,
+      })
     } finally {
       setLoadingAction(null)
     }

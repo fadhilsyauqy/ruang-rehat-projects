@@ -6,6 +6,7 @@ import { updateProfile } from "@/app/actions/preferences"
 import LanguagePreferenceCard from "./preferences/LanguagePreferenceCard"
 import CurrencyPreferenceCard from "./preferences/CurrencyPreferenceCard"
 import ThemePreferenceCard from "./preferences/ThemePreferenceCard"
+import { toast } from "@/components/ui/use-toast"
 
 interface PreferencesTabProps {
   currentLang: string
@@ -36,13 +37,21 @@ export default function PreferencesTab({
 
       await updateProfile(formData)
       setEditingSection(null)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Preferences Saved" : "Preferensi Disimpan",
+        description: currentLang === "en" ? "Your language and currency preferences have been updated." : "Preferensi bahasa dan mata uang Anda telah diperbarui.",
+      })
       if (onProfileSuccess) onProfileSuccess()
       router.refresh()
     } catch (err: any) {
-      alert(
-        err.message ||
-          (currentLang === "en" ? "Failed to update preferences" : "Gagal memperbarui preferensi")
-      )
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
+        description:
+          err.message ||
+          (currentLang === "en" ? "Failed to update preferences" : "Gagal memperbarui preferensi"),
+      })
     } finally {
       setLoading(false)
     }

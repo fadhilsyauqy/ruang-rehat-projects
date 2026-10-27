@@ -14,6 +14,8 @@ import { PropertyLocationSection } from "./PropertyLocationSection";
 import { PropertyAmenitiesSection } from "./PropertyAmenitiesSection";
 import { PropertyFormActions } from "./PropertyFormActions";
 import { PropertyKycDraftDialog } from "./PropertyKycDraftDialog";
+import { toast } from "@/components/ui/use-toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface PropertyFormProps {
   mode: "create" | "edit";
@@ -33,6 +35,7 @@ export function PropertyForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [createdProperty, setCreatedProperty] = useState<{ id: string; isDraft?: boolean } | null>(null);
   const [showKycModal, setShowKycModal] = useState(false);
 
@@ -99,7 +102,11 @@ export function PropertyForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.imageUrls.length === 0) {
-      alert(currentLang === "en" ? "Please upload at least one property photo." : "Harap unggah minimal satu foto properti.");
+      toast({
+        variant: "destructive",
+        title: t.toastWarning || (currentLang === "en" ? "Warning" : "Peringatan"),
+        description: t.requirePropertyPhoto || (currentLang === "en" ? "Please upload at least one property photo." : "Harap unggah minimal satu foto properti."),
+      });
       return;
     }
 
@@ -132,6 +139,12 @@ export function PropertyForm({
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || (currentLang === "en" ? "Failed to create property" : "Gagal menerbitkan properti"));
 
+        toast({
+          variant: "success",
+          title: t.toastSuccess || (currentLang === "en" ? "Success" : "Berhasil"),
+          description: currentLang === "en" ? "Property published successfully." : "Properti berhasil diterbitkan.",
+        });
+
         if (data.isDraft) {
           setCreatedProperty(data);
         } else {
@@ -146,30 +159,55 @@ export function PropertyForm({
         });
         if (!res.ok) throw new Error(currentLang === "en" ? "Failed to update property" : "Gagal memperbarui properti");
 
+        toast({
+          variant: "success",
+          title: t.toastSuccess || (currentLang === "en" ? "Success" : "Berhasil"),
+          description: currentLang === "en" ? "Property updated successfully." : "Properti berhasil diperbarui.",
+        });
+
         router.push("/dashboard");
         router.refresh();
       }
     } catch (error: unknown) {
       const err = error as Error;
-      alert(err.message || "An error occurred");
+      toast({
+        variant: "destructive",
+        title: t.toastError || (currentLang === "en" ? "Error" : "Terjadi Kesalahan"),
+        description: err.message || (currentLang === "en" ? "An error occurred" : "Terjadi kesalahan"),
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!initialData?.id || !confirm(t.deletePropertyConfirm)) return;
+  const handleDelete = () => {
+    if (!initialData?.id) return;
+    setIsDeleteDialogOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!initialData?.id) return;
 
     setDeleting(true);
     try {
       const res = await fetch(`/api/properties/${initialData.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(currentLang === "en" ? "Failed to delete property" : "Gagal menghapus properti");
 
+      toast({
+        variant: "success",
+        title: t.toastSuccess || (currentLang === "en" ? "Success" : "Berhasil"),
+        description: t.deletePropertySuccess || (currentLang === "en" ? "Property deleted successfully." : "Properti berhasil dihapus."),
+      });
+      setIsDeleteDialogOpen(false);
       router.push("/dashboard");
       router.refresh();
     } catch (error: unknown) {
       const err = error as Error;
-      alert(err.message || "An error occurred");
+      toast({
+        variant: "destructive",
+        title: t.toastError || (currentLang === "en" ? "Error" : "Terjadi Kesalahan"),
+        description: err.message || (currentLang === "en" ? "Failed to delete property" : "Gagal menghapus properti"),
+      });
       setDeleting(false);
     }
   };
@@ -275,6 +313,18 @@ export function PropertyForm({
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title={t.deletePropertyTitle || (currentLang === "en" ? "Delete Property" : "Hapus Properti")}
+        description={t.deletePropertyConfirm || (currentLang === "en" ? "Are you sure you want to delete this property? This action cannot be undone." : "Apakah Anda yakin ingin menghapus properti ini? Tindakan ini tidak dapat dibatalkan.")}
+        confirmLabel={t.deletePropertyTitle || (currentLang === "en" ? "Delete Property" : "Hapus Properti")}
+        cancelLabel={t.cancelAction || (currentLang === "en" ? "Cancel" : "Batal")}
+        variant="destructive"
+        loading={deleting}
+        onConfirm={executeDelete}
+      />
 
       {mode === "create" && (
         <>

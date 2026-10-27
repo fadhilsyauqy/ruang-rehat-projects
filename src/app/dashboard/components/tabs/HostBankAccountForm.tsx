@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { Landmark, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react"
 import type { Dictionary } from "@/lib/dictionary"
 import type { HostBankAccount } from "@prisma/client"
+import { toast } from "@/components/ui/use-toast"
 
 export interface HostBankAccountFormProps {
   initialBankAccount: HostBankAccount | null
@@ -75,9 +76,14 @@ export default function HostBankAccountForm({
   const handleSaveBankAccount = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inquiryResult && !initialBankAccount) {
-      alert(
-        "Harap klik 'Periksa Rekening' untuk memvalidasi nomor rekening Anda terlebih dahulu."
-      )
+      toast({
+        variant: "warning",
+        title: currentLang === "en" ? "Verification Required" : "Verifikasi Diperlukan",
+        description:
+          currentLang === "en"
+            ? "Please click 'Verify Account' to validate your account number first."
+            : "Harap klik 'Periksa Rekening' untuk memvalidasi nomor rekening Anda terlebih dahulu.",
+      })
       return
     }
 
@@ -106,16 +112,27 @@ export default function HostBankAccountForm({
       }
 
       onBankAccountSaved(data.bankAccount)
-      setBankSuccessMsg(
+      const successText =
         t.bankVerifiedSuccess ||
-          "Rekening bank terverifikasi dan berhasil disimpan!"
-      )
+        (currentLang === "en"
+          ? "Bank account verified and saved successfully!"
+          : "Rekening bank terverifikasi dan berhasil disimpan!")
+      setBankSuccessMsg(successText)
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Account Saved" : "Rekening Disimpan",
+        description: successText,
+      })
       setInquiryResult(null)
       setTimeout(() => setBankSuccessMsg(""), 4000)
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Gagal menyimpan rekening bank"
-      alert(message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Failed to Save" : "Gagal Menyimpan",
+        description: message,
+      })
     } finally {
       setSavingBankLoading(false)
     }

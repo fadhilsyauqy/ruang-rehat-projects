@@ -13,6 +13,7 @@ import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { AdminBookingItem } from "@/types"
 import RefundConfirmDialog from "../dialogs/RefundConfirmDialog"
+import { toast } from "@/components/ui/use-toast"
 
 export type RefundItem = AdminBookingItem
 
@@ -20,12 +21,14 @@ export interface RefundsTabProps {
   refundsList: RefundItem[]
   onRefundConfirmed?: (booking: RefundItem) => void
   currentCurrency?: string
+  currentLang?: string
 }
 
 export default function RefundsTab({
   refundsList,
   onRefundConfirmed,
   currentCurrency = "IDR",
+  currentLang = "id",
 }: RefundsTabProps) {
   const router = useRouter()
   const [userSearch, setUserSearch] = useState("")
@@ -63,11 +66,23 @@ export default function RefundsTab({
           refundedAt: new Date(),
         })
       }
+      toast({
+        variant: "success",
+        title: currentLang === "en" ? "Refund Confirmed" : "Pengembalian Dana Dikonfirmasi",
+        description:
+          currentLang === "en"
+            ? "Guest refund marked as completed."
+            : "Pengembalian dana tamu berhasil ditandai selesai.",
+      })
       setSelectedRefundBooking(null)
       router.refresh()
     } catch (err: unknown) {
       const error = err as Error
-      alert(error.message)
+      toast({
+        variant: "destructive",
+        title: currentLang === "en" ? "Refund Failed" : "Gagal Mengonfirmasi",
+        description: error.message,
+      })
     } finally {
       setLoadingAction(null)
     }

@@ -1,6 +1,7 @@
 import { getWibDateString } from "@/lib/date-standards"
 import type { Dictionary } from "@/lib/dictionary"
 import type { HostIncomingBooking } from "@/types"
+import { toast } from "@/components/ui/use-toast"
 
 export function exportHostFinancialReportCsv({
   incomingBookings,
@@ -14,12 +15,15 @@ export function exportHostFinancialReportCsv({
   t: Partial<Dictionary>
 }) {
   if (!incomingBookings || incomingBookings.length === 0) {
-    alert(
-      t.noDataToExport ||
+    toast({
+      variant: "warning",
+      title: currentLang === "en" ? "Export Empty" : "Data Kosong",
+      description:
+        t.noDataToExport ||
         (currentLang === "en"
           ? "No transaction data to export."
-          : "Belum ada data transaksi untuk diekspor.")
-    )
+          : "Belum ada data transaksi untuk diekspor."),
+    })
     return
   }
 
