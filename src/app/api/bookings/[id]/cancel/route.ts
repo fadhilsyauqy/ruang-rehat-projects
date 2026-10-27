@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const isGuest = booking.guestId === session.user.id
     const isHost = booking.property.hostId === session.user.id
-    const isAdmin = (session.user as any).role === "ADMIN"
+    const isAdmin = (session.user as { role?: string }).role === "ADMIN"
 
     if (!isGuest && !isHost && !isAdmin) {
       return NextResponse.json({ error: "Anda tidak memiliki hak untuk membatalkan pesanan ini." }, { status: 403 })
@@ -48,6 +48,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (booking.status === "CANCELLED" || booking.status === "COMPLETED") {
       return NextResponse.json({ error: "Pesanan tidak dapat dibatalkan pada status saat ini." }, { status: 400 })
+    }
+
+    // Task 5.1: Kunci Pembatalan Pesanan saat Booking Berstatus Sengketa (DISPUTED)
+    if (booking.status === "DISPUTED" || booking.escrowStatus === "DISPUTED") {
+      return NextResponse.json({
+        error: "Pesanan ini sedang dalam proses sengketa (Dispute). Seluruh alur pengembalian atau pelepasan dana wajib diselesaikan melalui keputusan Admin di portal sengketa."
+      }, { status: 400 })
+    }
+
+    // Task 5.2: Kunci Pembatalan Pesanan jika Escrow Sudah Dirilis (RELEASED)
+    if (booking.escrowStatus === "RELEASED") {
+      return NextResponse.json({
+        error: "Dana escrow untuk pesanan ini telah dirilis ke Tuan Rumah (Escrow Released). Pesanan tidak dapat dibatalkan secara otomatis. Silakan hubungi layanan bantuan atau ajukan sengketa melalui Pusat Resolusi."
+      }, { status: 400 })
     }
 
     const cancelledByRole = isGuest ? "GUEST" : isHost ? "HOST" : "SYSTEM"
@@ -171,6 +185,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // Jalankan seluruh mutasi dalam Database Transaction atomik
     const result = await prisma.$transaction(async (tx) => {
+      // Re-verifikasi status saat ini di dalam transaksi untuk mencegah race condition
+      const freshBooking = await tx.booking.findUnique({
+        where: { id: booking.id },
+        select: { status: true, escrowStatus: true, paymentStatus: true }
+      })
+
+      if (
+        !freshBooking ||
+        freshBooking.status === "CANCELLED" ||
+        freshBooking.status === "COMPLETED" ||
+        freshBooking.status === "DISPUTED" ||
+        freshBooking.escrowStatus === "DISPUTED" ||
+        freshBooking.escrowStatus === "RELEASED"
+      ) {
+        throw new Error("BOOKING_STATUS_LOCKED")
+      }
+
       // 1. Perbarui status pesanan booking
       const updatedBooking = await tx.booking.update({
         where: { id: booking.id },
@@ -231,7 +262,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       refundPercentage,
       policyNote
     })
-  } catch (error) {
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    if (err?.message === "BOOKING_STATUS_LOCKED") {
+      return NextResponse.json(
+        { error: "Pesanan tidak dapat dibatalkan karena status telah terkunci (sedang bersengketa, dana telah dirilis, atau telah selesai/dibatalkan)." },
+        { status: 400 }
+      )
+    }
     console.error("Cancel Booking Error:", error)
     return NextResponse.json({ error: "Terjadi kesalahan saat membatalkan pesanan" }, { status: 500 })
   }

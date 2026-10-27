@@ -163,15 +163,7 @@ export async function POST(req: Request) {
           throw new Error(`INSUFFICIENT_BALANCE:${availableBalanceIdr}`)
         }
 
-        // 3. Jika ada penalti, tandai penalti sudah dipotong di dalam transaksi yang sama
-        if (penalties.length > 0) {
-          await tx.hostPenalty.updateMany({
-            where: { id: { in: penalties.map(p => p.id) } },
-            data: { isDeducted: true }
-          })
-        }
-
-        // 4. Catat transaksi penarikan dana dengan status PENDING (Menunggu Verifikasi Admin)
+        // 3. Catat transaksi penarikan dana dengan status PENDING (Menunggu Verifikasi Admin)
         const payout = await tx.payout.create({
           data: {
             userId: session.user!.id!,
@@ -184,6 +176,17 @@ export async function POST(req: Request) {
             processedAt: null
           }
         })
+
+        // 4. Jika ada penalti, tandai penalti sudah dipotong dan tautkan ke payoutId di dalam transaksi yang sama
+        if (penalties.length > 0) {
+          await tx.hostPenalty.updateMany({
+            where: { id: { in: penalties.map(p => p.id) } },
+            data: { 
+              isDeducted: true,
+              payoutId: payout.id
+            }
+          })
+        }
 
         return {
           payout,

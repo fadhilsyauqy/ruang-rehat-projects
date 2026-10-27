@@ -14,8 +14,8 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 | **Fase 2** | Eliminasi Backdoor Pembayaran & Validasi Ketat Sisi Server | `COMPLETED` | 4 Task |
 | **Fase 3** | Anti Double-Booking, Concurrency Locking, & Sinkronisasi Kalender | `COMPLETED` | 3 Task |
 | **Fase 4** | Keamanan Webhook Midtrans, Timing-Safe Signature, & Idempotensi | `COMPLETED` | 3 Task |
-| **Fase 5** | Integritas Escrow, Atomic Payout, & Batasan Finansial Resolusi Sengketa | `PENDING` | 4 Task |
-| **Fase 6** | Otorisasi Ketat Server-Side (RBAC), Anti-IDOR, & Mass-Assignment Guard | `PENDING` | 3 Task |
+| **Fase 5** | Integritas Escrow, Atomic Payout, & Batasan Finansial Resolusi Sengketa | `COMPLETED` | 5 Task |
+| **Fase 6** | Otorisasi Ketat Server-Side (RBAC), Anti-IDOR, & Mass-Assignment Guard | `COMPLETED` | 3 Task |
 | **Fase 7** | Kepatuhan UU PDP No. 27/2022 & Eliminasi Data Leak pada RSC Payload | `PENDING` | 3 Task |
 | **Fase 8** | Pengerasan Upload File (MIME Validation, Size Limit, & Sanitasi Folder) | `PENDING` | 3 Task |
 
@@ -132,19 +132,19 @@ Menjamin aliran dana escrow dan refund aman dari eksploitasi, mencegah pembatala
 - `src/app/api/admin/payouts/[id]/route.ts` (Baris 40–110)
 
 ### Checklist Task:
-- [ ] **Task 5.1: Kunci Pembatalan Pesanan saat Booking Berstatus Sengketa (`DISPUTED`)**
+- [x] **Task 5.1: Kunci Pembatalan Pesanan saat Booking Berstatus Sengketa (`DISPUTED`)**
   - Pada `src/app/api/bookings/[id]/cancel/route.ts`, tambahkan pengecekan: jika `booking.escrowStatus === 'DISPUTED'`, tolak pembatalan sepihak baik oleh tamu maupun host dengan status `400 Bad Request`.
   - Seluruh alur pengembalian/pelepasan dana untuk pesanan bersengketa wajib diselesaikan melalui keputusan Admin di portal sengketa.
-- [ ] **Task 5.2: Kunci Pembatalan Pesanan jika Escrow Sudah Dirilis (`RELEASED`)**
+- [x] **Task 5.2: Kunci Pembatalan Pesanan jika Escrow Sudah Dirilis (`RELEASED`)**
   - Jika dana escrow telah dirilis ke Host (`escrowStatus === 'RELEASED'`), tamu tidak dapat membatalkan pesanan secara otomatis dengan klaim refund sistem. Arahkan tamu untuk menghubungi layanan bantuan / dispute.
-- [ ] **Task 5.3: Validasi Batas Maksimal Nominal Partial Refund pada Sengketa Admin**
+- [x] **Task 5.3: Validasi Batas Maksimal Nominal Partial Refund pada Sengketa Admin**
   - Pada `src/app/api/admin/disputes/[id]/route.ts`, validasi bahwa pada keputusan `RESOLVED_PARTIAL_REFUND`:
     `finalRefundApproved + finalPayoutApproved <= bookingTotal`.
     Tolak request jika total pembagian melebihi nilai transaksi pemesanan asli.
-- [ ] **Task 5.4: Penguncian Status Terminal Sengketa (*Terminal State Lock*)**
+- [x] **Task 5.4: Penguncian Status Terminal Sengketa (*Terminal State Lock*)**
   - Cegah eksekusi ulang keputusan pada sengketa yang telah berstatus `RESOLVED_RELEASE_TO_HOST`, `RESOLVED_FULL_REFUND`, `RESOLVED_PARTIAL_REFUND`, atau `REJECTED`.
   - Jika sengketa telah memiliki status penyelesaian, tolak perubahan status berulang guna menghindari inkonsistensi mutasi kas.
-- [ ] **Task 5.5: Pemulihan Status Penalti saat Payout Ditolak Admin (`FAILED`)**
+- [x] **Task 5.5: Pemulihan Status Penalti saat Payout Ditolak Admin (`FAILED`)**
   - Pada `src/app/api/admin/payouts/[id]/route.ts`, jika admin mengubah status penarikan menjadi `FAILED`, kembalikan penalti yang sebelumnya terpotong menjadi `isDeducted: false` agar dapat dipotong pada penarikan berikutnya.
 
 ---
@@ -160,14 +160,14 @@ Memastikan setiap mutasi data memverifikasi sesi login dan kepemilikan data (Ant
 - `src/app/api/properties/route.ts` (Baris 80–100)
 
 ### Checklist Task:
-- [ ] **Task 6.1: Bersihkan Mass-Assignment pada Pembaruan Properti (`PUT /api/properties/[id]`)**
+- [x] **Task 6.1: Bersihkan Mass-Assignment pada Pembaruan Properti (`PUT /api/properties/[id]`)**
   - Hapus penggunaan spread operator `...rest` langsung ke `prisma.property.update`.
   - Buat *whitelist* field eksplisit yang boleh diubah oleh Host (misal: `title`, `description`, `pricePerNight`, `cleaningFee`, `amenities`, `maxGuests`, `address`, `category`, `images`, `cancellationPolicy`).
   - Cegah manipulasi field terproteksi seperti `hostId`, `cancellationCount`, `isPublished`, dan `id`.
-- [ ] **Task 6.2: Validasi Integer Rating (1–5) & Pencegahan Duplikasi Review**
+- [x] **Task 6.2: Validasi Integer Rating (1–5) & Pencegahan Duplikasi Review**
   - Pada `src/app/api/reviews/route.ts`, pastikan `Number.isInteger(rating)` dan berada di antara `1 <= rating <= 5`.
   - Periksa apakah user telah pernah mengirim ulasan untuk `bookingId` terkait (`prisma.review.findFirst({ where: { bookingId } })`). Jika sudah ada, tolak request untuk mencegah spamming review.
-- [ ] **Task 6.3: Validasi Kepemilikan pada Operasi Hapus Properti (`DELETE`)**
+- [x] **Task 6.3: Validasi Kepemilikan pada Operasi Hapus Properti (`DELETE`)**
   - Pastikan properti yang memiliki pemesanan aktif berstatus `CONFIRMED` atau `PAID` di masa mendatang tidak dapat dihapus oleh Host untuk melindungi hak tamu yang sudah memesan.
 
 ---

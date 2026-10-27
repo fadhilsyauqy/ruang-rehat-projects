@@ -58,6 +58,7 @@ enum DisputeStatus {
   RESOLVED_RELEASE_TO_HOST
   RESOLVED_FULL_REFUND
   RESOLVED_PARTIAL_REFUND
+  REJECTED
 }
 
 enum CancellationPolicy {
@@ -318,6 +319,7 @@ model HostPenalty {
   id          String   @id @default(cuid())
   hostId      String
   bookingId   String
+  payoutId    String?
   amountIdr   Int      @default(250000) // Default Rp 250.000
   reason      String
   isDeducted  Boolean  @default(false)  // Akan dipotong pada pengajuan Payout berikutnya
@@ -325,9 +327,11 @@ model HostPenalty {
 
   host        User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payout      Payout?  @relation(fields: [payoutId], references: [id], onDelete: SetNull)
 
   @@index([hostId, isDeducted])
   @@index([bookingId])
+  @@index([payoutId])
 }
 
 enum PayoutStatus {
@@ -352,19 +356,20 @@ model HostBankAccount {
 }
 
 model Payout {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   userId        String
   amount        Float
-  status        PayoutStatus @default(PENDING)
+  status        PayoutStatus  @default(PENDING)
   bankName      String
   accountNumber String
   accountHolder String
-  notes         String?      @db.Text
+  notes         String?       @db.Text
   processedAt   DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  penalties     HostPenalty[]
 
   @@index([userId, status])
 }

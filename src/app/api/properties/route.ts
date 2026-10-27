@@ -62,6 +62,27 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json()
+    const {
+      title,
+      description,
+      category,
+      address,
+      latitude,
+      longitude,
+      maxGuests,
+      amenities,
+      imageUrls,
+      images,
+      cancellationPolicy,
+      pricePerNight,
+      price,
+      cleaningFee,
+      maxStayNights,
+    } = data
+
+    if (!title || !description || !address) {
+      return NextResponse.json({ error: "Judul, deskripsi, dan alamat properti wajib diisi." }, { status: 400 })
+    }
 
     // Cek status KYC user saat ini
     const currentUser = await prisma.user.findUnique({
@@ -71,20 +92,38 @@ export async function POST(req: Request) {
 
     const isHostVerified = currentUser?.kycStatus === 'VERIFIED'
 
-    const pricePerNight = data.pricePerNight !== undefined
-      ? Math.round(Number(data.pricePerNight))
-      : Math.round(Number(data.price || 0) * 18051)
-    const cleaningFee = Math.round(Number(data.cleaningFee || 0))
-    const priceUsd = Math.round((pricePerNight / 18051) * 100) / 100
-    const maxStayNights = Number(data.maxStayNights) || 28
+    const finalPricePerNight = pricePerNight !== undefined
+      ? Math.round(Number(pricePerNight))
+      : Math.round(Number(price || 0) * 18051)
+    const finalCleaningFee = Math.round(Number(cleaningFee || 0))
+    const priceUsd = Math.round((finalPricePerNight / 18051) * 100) / 100
+    const finalMaxStayNights = Number(maxStayNights) || 28
+    const finalImages = Array.isArray(imageUrls) 
+      ? imageUrls.filter((img): img is string => typeof img === "string") 
+      : (Array.isArray(images) ? images.filter((img): img is string => typeof img === "string") : [])
+    const finalAmenities = Array.isArray(amenities)
+      ? amenities.filter((a): a is string => typeof a === "string")
+      : []
+    const finalPolicy = cancellationPolicy && ["FLEXIBLE", "MODERATE", "STRICT"].includes(cancellationPolicy)
+      ? cancellationPolicy
+      : "FLEXIBLE"
 
     const property = await prisma.property.create({
       data: {
-        ...data,
-        pricePerNight,
-        cleaningFee,
+        title: String(title).trim(),
+        description: String(description).trim(),
+        category: String(category || "Villa").trim(),
+        address: String(address).trim(),
+        latitude: typeof latitude === "number" && !isNaN(latitude) ? latitude : 0,
+        longitude: typeof longitude === "number" && !isNaN(longitude) ? longitude : 0,
+        maxGuests: Math.max(1, Math.round(Number(maxGuests) || 1)),
+        amenities: finalAmenities,
+        imageUrls: finalImages,
+        cancellationPolicy: finalPolicy,
+        pricePerNight: finalPricePerNight,
+        cleaningFee: finalCleaningFee,
         price: priceUsd,
-        maxStayNights,
+        maxStayNights: finalMaxStayNights,
         hostId: session.user.id,
         // Model Hybrid: Jika host belum terverifikasi KYC, properti disimpan sebagai DRAFT (isPublished: false)
         isPublished: isHostVerified

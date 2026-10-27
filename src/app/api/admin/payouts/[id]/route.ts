@@ -9,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth()
-    if (!session || !session.user || (session.user as any).role !== "ADMIN") {
+    if (!session || !session.user || (session.user as { role?: string }).role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 })
     }
 
@@ -93,19 +93,57 @@ export async function PATCH(
       updateData.processedAt = processedAt
     }
 
-    const updatedPayout = await prisma.payout.update({
-      where: { id: resolvedParams.id },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
+    const updatedPayout = await prisma.$transaction(async (tx) => {
+      const freshPayout = await tx.payout.findUnique({
+        where: { id: resolvedParams.id },
+        select: { status: true }
+      })
+
+      if (!freshPayout || freshPayout.status === "COMPLETED" || freshPayout.status === "FAILED") {
+        throw new Error("PAYOUT_TERMINAL_STATE_LOCKED")
+      }
+
+      const payout = await tx.payout.update({
+        where: { id: resolvedParams.id },
+        data: updateData,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+            }
           }
         }
+      })
+
+      // Task 5.5: Pemulihan Status Penalti saat Payout Ditolak Admin (FAILED)
+      if (status === "FAILED") {
+        const linkedCount = await tx.hostPenalty.count({
+          where: { payoutId: existingPayout.id }
+        })
+
+        if (linkedCount > 0) {
+          await tx.hostPenalty.updateMany({
+            where: { payoutId: existingPayout.id },
+            data: { isDeducted: false, payoutId: null }
+          })
+        } else {
+          // Fallback riwayat lama: pulihkan penalti terpotong milik host yang diajukan sebelum/pada payout ini
+          await tx.hostPenalty.updateMany({
+            where: {
+              hostId: existingPayout.userId,
+              isDeducted: true,
+              payoutId: null,
+              createdAt: { lte: existingPayout.createdAt }
+            },
+            data: { isDeducted: false }
+          })
+        }
       }
+
+      return payout
     })
 
     // Kirim notifikasi email ke Host jika status menjadi COMPLETED dan notifyHostPayout aktif
@@ -138,8 +176,15 @@ export async function PATCH(
       message: `Status payout #${resolvedParams.id} diubah menjadi ${status}`,
       payout: updatedPayout
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    if (err?.message === "PAYOUT_TERMINAL_STATE_LOCKED") {
+      return NextResponse.json(
+        { error: "Pencairan dana ini telah berstatus terminal (COMPLETED atau FAILED) dan tidak dapat diubah kembali." },
+        { status: 400 }
+      )
+    }
     console.error("Admin Payout update error:", error)
-    return NextResponse.json({ error: error.message || "Failed to update payout status" }, { status: 500 })
+    return NextResponse.json({ error: err?.message || "Failed to update payout status" }, { status: 500 })
   }
 }
