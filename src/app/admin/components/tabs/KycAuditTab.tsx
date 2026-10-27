@@ -11,11 +11,13 @@ import {
   ZoomIn,
   Eye,
   XCircle,
+  ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import EmptyState from "@/components/ui/EmptyState"
 import type { AdminUserItem } from "@/types"
 import type { Dictionary } from "@/lib/dictionary"
 import KycRejectDialog from "../dialogs/KycRejectDialog"
@@ -186,9 +188,34 @@ export default function KycAuditTab({
       {/* List of KYC Users */}
       <div className="space-y-4">
         {filteredKycUsers.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 text-muted-foreground text-xs">
-            Tidak ada pengguna yang sesuai dengan kriteria filter KYC.
-          </div>
+          <EmptyState
+            icon={ShieldCheck}
+            title={
+              currentLang === "en"
+                ? "No KYC submissions found"
+                : "Tidak ada antrean verifikasi KYC"
+            }
+            description={
+              userSearch || kycStatusFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "No users match your search or filter criteria."
+                  : "Tidak ada pengguna yang sesuai dengan kriteria pencarian atau filter KYC."
+                : currentLang === "en"
+                ? "All host identity documents have been audited or no submissions pending."
+                : "Semua berkas identitas host telah diproses atau belum ada pengajuan baru."
+            }
+            actionLabel={
+              userSearch || kycStatusFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "Reset Filter"
+                  : "Reset Filter"
+                : undefined
+            }
+            onAction={() => {
+              setUserSearch("")
+              setKycStatusFilter("ALL")
+            }}
+          />
         ) : (
           filteredKycUsers.map((user) => {
             const nameMatchesBank =

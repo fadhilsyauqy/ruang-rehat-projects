@@ -1,5 +1,6 @@
 import React, { useState } from "react"
-import { CalendarX, CalendarDays, Calendar, Lock, Unlock } from "lucide-react"
+import { CalendarX, CalendarDays, Calendar, Lock, Unlock, CalendarCheck2 } from "lucide-react"
+import EmptyState from "@/components/ui/EmptyState"
 import BlockDateDialog from "../dialogs/BlockDateDialog"
 import type { Dictionary } from "@/lib/dictionary"
 import type { BlockedDateItem } from "@/types"
@@ -98,10 +99,15 @@ export default function AvailabilityTab({
         </div>
 
         {blockedDatesList.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-8 text-center bg-gray-50/50 dark:bg-gray-900/30">
-            <CalendarDays className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">{t.noBlockedDates}</p>
-          </div>
+          <EmptyState
+            icon={CalendarCheck2}
+            title={t.noBlockedDates || "Semua Kalender Terbuka"}
+            description={
+              currentLang === "en"
+                ? "All dates are currently available for guests to book. Use the form above to lock specific dates for maintenance or private use."
+                : "Seluruh tanggal saat ini terbuka untuk pemesanan tamu. Gunakan formulir di atas jika ingin mengunci tanggal tertentu untuk renovasi atau pemakaian pribadi."
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {blockedDatesList.map((item) => (

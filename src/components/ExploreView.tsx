@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { SearchX } from "lucide-react"
 import MapWrapper from "@/components/MapWrapper"
 import PropertyCard from "@/components/PropertyCard"
+import EmptyState from "@/components/ui/EmptyState"
 
 export default function ExploreView({ 
   properties, 
@@ -31,10 +33,13 @@ export default function ExploreView({
         {/* Kiri: List of Properties (Mengalir secara normal dengan scrollbar utama di sisi kanan layar) */}
         <div className="w-full flex-1 min-w-[350px]">
           {properties.length === 0 ? (
-            <div className="text-center py-20 bg-gray-50 dark:bg-gray-900 rounded-xl border border-dashed">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.noProps}</h3>
-              <p className="text-muted-foreground mt-2">{t.noPropsDesc}</p>
-            </div>
+            <EmptyState
+              icon={SearchX}
+              title={t.noProps}
+              description={t.noPropsDesc}
+              actionLabel={t.resetFilters || (t.clearAll ? `${t.clearAll} (Reset)` : "Hapus Filter & Tampilkan Semua")}
+              actionHref="/"
+            />
           ) : (
             <div className="flex flex-col gap-6 pb-16">
               {/* Featured Property (if any) */}
@@ -113,10 +118,13 @@ export default function ExploreView({
     <div className="flex flex-col gap-6">
       <div className="w-full">
         {properties.length === 0 ? (
-          <div className="text-center py-20 bg-gray-50 dark:bg-gray-900 rounded-xl border border-dashed">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.noProps}</h3>
-            <p className="text-muted-foreground mt-2">{t.noPropsDesc}</p>
-          </div>
+          <EmptyState
+            icon={SearchX}
+            title={t.noProps}
+            description={t.noPropsDesc}
+            actionLabel={t.resetFilters || (t.clearAll ? `${t.clearAll} (Reset)` : "Hapus Filter & Tampilkan Semua")}
+            actionHref="/"
+          />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {properties.map(p => {

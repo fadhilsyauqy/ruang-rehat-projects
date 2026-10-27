@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, ShieldCheck, CheckCircle2 } from "lucide-react"
+import { Search, ShieldCheck, CheckCircle2, Landmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import EmptyState from "@/components/ui/EmptyState"
 import type { AdminPayoutItem } from "@/types"
 import PayoutConfirmDialog from "../dialogs/PayoutConfirmDialog"
 import { toast } from "@/components/ui/use-toast"
@@ -136,9 +137,34 @@ export default function PayoutsTab({
       {/* Payouts List */}
       <div className="space-y-4">
         {filteredPayouts.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 text-muted-foreground text-xs">
-            Tidak ada data permohonan penarikan dana sesuai filter.
-          </div>
+          <EmptyState
+            icon={Landmark}
+            title={
+              currentLang === "en"
+                ? "No payout requests found"
+                : "Tidak ada permohonan penarikan"
+            }
+            description={
+              userSearch || payoutStatusFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "No payouts match your search query or status filter."
+                  : "Tidak ada data permohonan penarikan dana host yang cocok dengan filter."
+                : currentLang === "en"
+                ? "All host payouts have been processed or no requests pending."
+                : "Semua penarikan saldo host telah selesai diproses atau tidak ada antrean baru."
+            }
+            actionLabel={
+              userSearch || payoutStatusFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "Reset Filter"
+                  : "Reset Filter"
+                : undefined
+            }
+            onAction={() => {
+              setUserSearch("")
+              setPayoutStatusFilter("ALL")
+            }}
+          />
         ) : (
           filteredPayouts.map((payout) => (
             <div

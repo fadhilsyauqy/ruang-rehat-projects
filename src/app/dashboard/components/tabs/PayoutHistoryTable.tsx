@@ -1,6 +1,7 @@
 import React from "react"
 import { Clock, Landmark } from "lucide-react"
 import { formatPrice } from "@/lib/format"
+import EmptyState from "@/components/ui/EmptyState"
 import type { Dictionary } from "@/lib/dictionary"
 import type { Payout } from "@/types"
 
@@ -23,10 +24,11 @@ export default function PayoutHistoryTable({
       </h4>
 
       {payoutsList.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-10 text-center bg-gray-50/50 dark:bg-gray-900/30">
-          <Landmark className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">{t.noPayoutHistory}</p>
-        </div>
+        <EmptyState
+          icon={Landmark}
+          title={t.noPayoutHistory || "Belum ada riwayat penarikan"}
+          description="Dana dari tamu yang telah check-out akan otomatis siap ditarik setelah masa escrow berakhir (1x24 jam setelah tamu menyelesaikan masa inap)."
+        />
       ) : (
         <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">

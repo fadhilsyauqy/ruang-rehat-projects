@@ -1,10 +1,11 @@
 import React, { useState } from "react"
 import Link from "next/link"
-import { Search, ShieldAlert, Phone, MapPin } from "lucide-react"
+import { Search, ShieldAlert, Phone, MapPin, CalendarDays } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/format"
 import { formatWibDate } from "@/lib/date-standards"
 import { cn } from "@/lib/utils"
+import EmptyState from "@/components/ui/EmptyState"
 import type { AdminBookingItem } from "@/types"
 
 export interface BookingsTabProps {
@@ -76,9 +77,34 @@ export default function BookingsTab({
       {/* Bookings Table / Cards */}
       <div className="space-y-4">
         {filteredBookings.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 text-muted-foreground text-xs">
-            Tidak ada data pemesanan sesuai filter.
-          </div>
+          <EmptyState
+            icon={CalendarDays}
+            title={
+              currentLang === "en"
+                ? "No reservations found"
+                : "Tidak ada data pemesanan"
+            }
+            description={
+              userSearch || bookingStatusFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "No bookings match your search query or status filter."
+                  : "Tidak ada pemesanan yang cocok dengan kata kunci atau filter status."
+                : currentLang === "en"
+                ? "No guest reservations recorded in the system yet."
+                : "Belum ada riwayat pemesanan reservasi tamu di sistem."
+            }
+            actionLabel={
+              userSearch || bookingStatusFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "Reset Filter"
+                  : "Reset Filter"
+                : undefined
+            }
+            onAction={() => {
+              setUserSearch("")
+              setBookingStatusFilter("ALL")
+            }}
+          />
         ) : (
           filteredBookings.map((b) => {
             const bookingTotal = getBookingTotalIdr(b)

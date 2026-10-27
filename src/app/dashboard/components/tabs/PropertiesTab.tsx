@@ -10,9 +10,11 @@ import {
   MapPin,
   ExternalLink,
   Edit3,
+  SearchX,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import EmptyState from "@/components/ui/EmptyState"
 import { formatPrice } from "@/lib/format"
 import type { Dictionary } from "@/lib/dictionary"
 import type { HostPropertyItem } from "@/types"
@@ -62,27 +64,35 @@ export default function PropertiesTab({
       </div>
 
       {filteredProperties.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-12 text-center bg-gray-50/50 dark:bg-gray-900/30">
-          <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            {t.noPropertiesFound}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1 mb-5">
-            {currentLang === "en"
-              ? "Start hosting your place and get your first bookings."
-              : "Mulai sewakan akomodasi Anda dan raih pemesanan pertama."}
-          </p>
-          <Link
-            href="/properties/new"
-            className={cn(
-              buttonVariants({ variant: "default" }),
-              "bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold"
-            )}
-          >
-            <PlusCircle className="mr-1.5 h-4 w-4" />
-            {t.addProperty}
-          </Link>
-        </div>
+        properties.length === 0 ? (
+          <EmptyState
+            icon={Building2}
+            title={t.noPropertiesFound || "Belum ada properti terdaftar"}
+            description={
+              currentLang === "en"
+                ? "Start hosting your place and get your first bookings."
+                : "Mulai sewakan akomodasi Anda dan raih pemesanan pertama."
+            }
+            actionLabel={t.addProperty}
+            actionHref="/properties/new"
+          />
+        ) : (
+          <EmptyState
+            icon={SearchX}
+            title={
+              currentLang === "en"
+                ? "No properties match your filter"
+                : "Tidak ada properti yang cocok"
+            }
+            description={
+              currentLang === "en"
+                ? "Try searching with a different keyword or reset your filter."
+                : "Coba cari dengan kata kunci lain atau reset filter pencarian Anda."
+            }
+            actionLabel={currentLang === "en" ? "Reset Filter" : "Reset Filter"}
+            onAction={() => setPropSearch("")}
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5">
           {filteredProperties.map((p) => {

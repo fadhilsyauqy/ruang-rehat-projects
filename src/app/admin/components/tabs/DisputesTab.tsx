@@ -17,6 +17,7 @@ import DisputeResolutionDialog, {
   type DisputeResolutionType,
 } from "../dialogs/DisputeResolutionDialog"
 import { toast } from "@/components/ui/use-toast"
+import EmptyState from "@/components/ui/EmptyState"
 
 export interface DisputesTabProps {
   disputesList: AdminDisputeItem[]
@@ -139,9 +140,34 @@ export default function DisputesTab({
       {/* Disputes List */}
       <div className="space-y-4">
         {filteredDisputes.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 text-muted-foreground text-xs">
-            Tidak ada laporan sengketa sesuai filter.
-          </div>
+          <EmptyState
+            icon={Scale}
+            title={
+              currentLang === "en"
+                ? "No disputes found"
+                : "Tidak ada laporan sengketa"
+            }
+            description={
+              userSearch || disputeFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "No disputes match your search or status filter."
+                  : "Tidak ada laporan sengketa yang cocok dengan kriteria filter saat ini."
+                : currentLang === "en"
+                ? "Great news! There are no open disputes requiring mediation."
+                : "Kabar baik! Tidak ada sengketa yang memerlukan mediasi admin."
+            }
+            actionLabel={
+              userSearch || disputeFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "Reset Filter"
+                  : "Reset Filter"
+                : undefined
+            }
+            onAction={() => {
+              setUserSearch("")
+              setDisputeFilter("ALL")
+            }}
+          />
         ) : (
           filteredDisputes.map((d) => {
             const bookingTotal =

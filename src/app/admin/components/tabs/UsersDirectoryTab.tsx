@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Download } from "lucide-react"
+import { Search, Download, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import type { AdminUserItem } from "@/types"
 import { toast } from "@/components/ui/use-toast"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+import EmptyState from "@/components/ui/EmptyState"
 
 export interface UsersDirectoryTabProps {
   initialUsers: AdminUserItem[]
@@ -163,7 +164,34 @@ export default function UsersDirectoryTab({
 
       {/* Users Table */}
       <div className="space-y-3">
-        {filteredUsers.map((u) => (
+        {filteredUsers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={
+              currentLang === "en"
+                ? "No users found"
+                : "Pengguna tidak ditemukan"
+            }
+            description={
+              userSearch
+                ? currentLang === "en"
+                  ? "No user accounts match your search query."
+                  : "Tidak ada akun pengguna yang cocok dengan kata kunci pencarian Anda."
+                : currentLang === "en"
+                ? "No users registered yet."
+                : "Belum ada akun pengguna yang terdaftar."
+            }
+            actionLabel={
+              userSearch
+                ? currentLang === "en"
+                  ? "Reset Pencarian"
+                  : "Reset Pencarian"
+                : undefined
+            }
+            onAction={() => setUserSearch("")}
+          />
+        ) : (
+          filteredUsers.map((u) => (
           <div
             key={u.id}
             className="p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -219,7 +247,8 @@ export default function UsersDirectoryTab({
               </select>
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
 
       <ConfirmDialog

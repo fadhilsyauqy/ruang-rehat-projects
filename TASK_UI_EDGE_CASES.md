@@ -14,9 +14,9 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 | **Fase 2** | Standarisasi Loading State & Proteksi Anti Double-Click | `COMPLETED` | 4 Task |
 | **Fase 3** | Pengerasan Edge Cases Alur Pembayaran Midtrans Snap | `COMPLETED` | 3 Task |
 | **Fase 4** | Sinkronisasi Validasi Sisi Klien (Upload Berkas & Seleksi Kalender) | `COMPLETED` | 3 Task |
-| **Fase 5** | Komponen Empty States Komprehensif & Aksi Reset Filter | `PENDING` | 4 Task |
-| **Fase 6** | Global Error Boundary, 404 Not Found, & Fallback UI | `PENDING` | 3 Task |
-| **Fase 7** | Sinkronisasi Kamus Lokalisasi Dwi-Bahasa (ID/EN) & Audit TypeScript | `PENDING` | 3 Task |
+| **Fase 5** | Komponen Empty States Komprehensif & Aksi Reset Filter | `COMPLETED` | 4 Task |
+| **Fase 6** | Global Error Boundary, 404 Not Found, & Fallback UI | `COMPLETED` | 3 Task |
+| **Fase 7** | Sinkronisasi Kamus Lokalisasi Dwi-Bahasa (ID/EN) & Audit TypeScript | `COMPLETED` | 3 Task |
 
 ---
 
@@ -189,17 +189,17 @@ Menghilangkan tampilan kosong tanpa arah pada seluruh tabel dan daftar data. Men
 - `src/app/admin/components/tabs/UsersDirectoryTab.tsx`
 
 ### Checklist Task:
-- [ ] **Task 5.1: Bangun Komponen Terpadu `<EmptyState />`**
+- [x] **Task 5.1: Bangun Komponen Terpadu `<EmptyState />`**
   - Buat komponen modular dengan properti: `icon`, `title`, `description`, `actionLabel`, `onAction` / `actionHref`, dan `secondaryActionLabel` opsional.
   - Beri styling modern dengan rounded card, border dashed, background lembut di dark/light mode, dan tipografi rapi.
-- [ ] **Task 5.2: Terapkan Empty State & Tombol Reset pada Halaman Pencarian Properti**
+- [x] **Task 5.2: Terapkan Empty State & Tombol Reset pada Halaman Pencarian Properti**
   - Pada `ExploreView.tsx`: jika `properties.length === 0`, tampilkan empty state dengan tombol *"Hapus Filter & Tampilkan Semua"* yang mereset query string dan mengarahkan pengguna kembali ke URL kanonikal `/`.
-- [ ] **Task 5.3: Terapkan Empty State pada Seluruh Tab Host Dashboard**
+- [x] **Task 5.3: Terapkan Empty State pada Seluruh Tab Host Dashboard**
   - Di `PropertiesTab.tsx`: bedakan antara user yang memang belum memiliki listing (CTA: *"Tambah Properti Baru"*) dengan user yang hasil pencarian/filternya nihil (CTA: *"Reset Filter"*).
   - Di `HostBookingsTab.tsx`: tambahkan tombol aksi reset filter jika tidak ada reservasi yang cocok dengan status yang dipilih.
   - Di `PayoutHistoryTable.tsx`: tampilkan informasi alur pencairan dana dan waktu rilis escrow jika belum ada riwayat penarikan.
   - Di `AvailabilityTab.tsx`: berikan panduan informatif jika belum ada tanggal yang diblokir oleh host.
-- [ ] **Task 5.4: Terapkan Empty State Terstandar pada Seluruh Tab Admin Dashboard**
+- [x] **Task 5.4: Terapkan Empty State Terstandar pada Seluruh Tab Admin Dashboard**
   - Ganti teks statis abu-abu 1 baris di `KycAuditTab.tsx`, `DisputesTab.tsx`, `RefundsTab.tsx`, `BookingsTab.tsx`, dan `PayoutsTab.tsx` dengan komponen `<EmptyState />` berikon Lucide yang selaras (`ShieldCheck`, `Scale`, `Banknote`, `CalendarDays`, `Landmark`).
   - Tambahkan penanganan empty state pada `UsersDirectoryTab.tsx` yang sebelumnya sama sekali tidak memiliki pengecekan `filteredUsers.length === 0`.
 
@@ -218,12 +218,12 @@ Menyediakan pengalaman navigasi yang tangguh (*graceful failure*) ketika terjadi
 - `src/app/properties/[id]/error.tsx` (Baru)
 
 ### Checklist Task:
-- [ ] **Task 6.1: Bangun Halaman Global 404 Not Found (`src/app/not-found.tsx`)**
+- [x] **Task 6.1: Bangun Halaman Global 404 Not Found (`src/app/not-found.tsx`)**
   - Buat halaman 404 modern berkarakter Ruang Rehat dengan ilustrasi/ikon menarik, pesan bahwa halaman atau penginapan tidak ditemukan, serta tombol navigasi utama *"Kembali ke Beranda"* dan *"Jelajahi Properti"*.
-- [ ] **Task 6.2: Bangun Global Error Boundary (`src/app/error.tsx` & `src/app/global-error.tsx`)**
+- [x] **Task 6.2: Bangun Global Error Boundary (`src/app/error.tsx` & `src/app/global-error.tsx`)**
   - Buat komponen penangkap error runtime (`"use client"`) yang menerima prop `{ error, reset }`.
   - Tampilkan pesan bahwa sistem mengalami kendala teknis sementara (tanpa mengekspos stack trace internal ke pengguna umum), tombol *"Coba Lagi"* (`reset()`), serta tombol bantuan *"Kembali ke Beranda"*.
-- [ ] **Task 6.3: Bangun Contextual Error & Not Found untuk Detail Properti (`/properties/[id]`)**
+- [x] **Task 6.3: Bangun Contextual Error & Not Found untuk Detail Properti (`/properties/[id]`)**
   - Buat `src/app/properties/[id]/not-found.tsx` khusus untuk menangani skenario ID penginapan yang tidak valid atau telah dihapus oleh host.
   - Sediakan tombol pintas bagi tamu untuk mencari penginapan serupa di destinasi populer.
 
@@ -240,16 +240,16 @@ Memastikan seluruh teks pesan error baru, string notifikasi toast, label tombol 
 - Seluruh komponen yang mengonsumsi dictionary
 
 ### Checklist Task:
-- [ ] **Task 7.1: Inventarisasi & Penambahan Key Kamus Baru ke `id.ts`**
+- [x] **Task 7.1: Inventarisasi & Penambahan Key Kamus Baru ke `id.ts`**
   - Daftarkan key kamus baru untuk:
     - Pesan Toast (sukses update data, gagal upload berkas, format tidak didukung, ukuran melebihi batas).
     - Status loading aksi (memproses reservasi, memproses transfer, menghapus listing).
     - Empty states (judul, deskripsi, dan label CTA reset filter untuk seluruh modul).
     - Halaman 404 dan Error boundary.
-- [ ] **Task 7.2: Sinkronisasi Penuh ke `en.ts` (Zero Undefined Translation)**
+- [x] **Task 7.2: Sinkronisasi Penuh ke `en.ts` (Zero Undefined Translation)**
   - Salin dan terjemahkan seluruh key baru ke `src/lib/dictionaries/en.ts` dengan padanan bahasa Inggris yang natural dan profesional.
   - Pastikan tipe `Dictionary` tetap valid dan tidak ada properti opsional yang memicu nilai `undefined` saat bahasa diubah ke bahasa Inggris.
-- [ ] **Task 7.3: Verifikasi Kompilasi & Validasi Akhir (`npx tsc --noEmit`)**
+- [x] **Task 7.3: Verifikasi Kompilasi & Validasi Akhir (`npx tsc --noEmit`)**
   - Jalankan `npx tsc --noEmit` untuk memverifikasi integritas tipe data TypeScript pada seluruh komponen yang diperbarui.
   - Konfirmasi tidak ada kebocoran tipe `any` atau peringatan kompilasi pada antarmuka frontend.
 

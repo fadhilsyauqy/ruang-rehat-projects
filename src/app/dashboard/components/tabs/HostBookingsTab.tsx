@@ -11,10 +11,12 @@ import {
   Phone,
   MapPin,
   ShieldAlert,
+  SearchX,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatPrice, getBookingPriceIdr } from "@/lib/format"
 import { BookingStatusBadge } from "@/components/ui/BookingStatusBadge"
+import EmptyState from "@/components/ui/EmptyState"
 import HostBookingActions from "../../HostBookingActions"
 import type { Dictionary } from "@/lib/dictionary"
 import type { HostIncomingBooking } from "@/types"
@@ -127,16 +129,33 @@ export default function HostBookingsTab({
       </div>
 
       {filteredIncomingBookings.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-12 text-center bg-gray-50/50 dark:bg-gray-900/30">
-          <CalendarDays className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            {t.noBookingsFound}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t.noIncomingBookingsWithFilter ||
-              "Belum ada reservasi masuk dengan filter yang dipilih."}
-          </p>
-        </div>
+        incomingBookings.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            title={t.noBookingsFound || (currentLang === "en" ? "No reservations found" : "Tidak ada pemesanan")}
+            description={
+              currentLang === "en"
+                ? "You don't have any incoming guest reservations yet."
+                : "Belum ada reservasi masuk dari tamu untuk properti Anda."
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={SearchX}
+            title={t.noBookingsFound || (currentLang === "en" ? "No reservations found" : "Tidak ada pemesanan")}
+            description={
+              t.noIncomingBookingsWithFilter ||
+              (currentLang === "en"
+                ? "No reservations match your current filter criteria."
+                : "Belum ada reservasi masuk dengan filter yang dipilih.")
+            }
+            actionLabel={currentLang === "en" ? "Reset Filter" : "Reset Filter"}
+            onAction={() => {
+              setBookingSearch("")
+              setBookingFilterStatus("ALL")
+            }}
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {filteredIncomingBookings.map((b) => (

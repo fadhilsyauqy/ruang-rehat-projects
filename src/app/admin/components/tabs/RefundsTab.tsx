@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import type { AdminBookingItem } from "@/types"
 import RefundConfirmDialog from "../dialogs/RefundConfirmDialog"
 import { toast } from "@/components/ui/use-toast"
+import EmptyState from "@/components/ui/EmptyState"
 
 export type RefundItem = AdminBookingItem
 
@@ -136,9 +137,34 @@ export default function RefundsTab({
       {/* Refunds List */}
       <div className="space-y-4">
         {filteredRefunds.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 text-muted-foreground text-xs">
-            Tidak ada antrean refund sesuai filter.
-          </div>
+          <EmptyState
+            icon={Banknote}
+            title={
+              currentLang === "en"
+                ? "No refunds found"
+                : "Tidak ada antrean refund"
+            }
+            description={
+              userSearch || refundFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "No refund requests match your search or filter criteria."
+                  : "Tidak ada antrean pengembalian dana yang cocok dengan filter."
+                : currentLang === "en"
+                ? "All eligible guest refunds have been processed successfully."
+                : "Seluruh permohonan pengembalian dana tamu telah selesai diproses."
+            }
+            actionLabel={
+              userSearch || refundFilter !== "ALL"
+                ? currentLang === "en"
+                  ? "Reset Filter"
+                  : "Reset Filter"
+                : undefined
+            }
+            onAction={() => {
+              setUserSearch("")
+              setRefundFilter("ALL")
+            }}
+          />
         ) : (
           filteredRefunds.map((b) => (
             <div
