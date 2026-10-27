@@ -906,17 +906,17 @@ Next.js App Router memanfaatkan mekanisme isolasi kegagalan bertingkat dengan pe
 
 ```mermaid
 graph TD
-    RootCrash[Fatal Crash di Root Layout / HTML] -->|Ditangkap oleh| GlobalError[src/app/global-error.tsx<br/>Menggantikan html dan body]
-    GlobalError -->|Aksi Pemulihan| ResetGlobal[Tombol Refresh / Muat Ulang Halaman]
+    RootCrash["Fatal Crash di Root Layout / HTML"] -->|Ditangkap oleh| GlobalError["src/app/global-error.tsx<br/>Menggantikan Root Layout"]
+    GlobalError -->|Aksi Pemulihan| ResetGlobal["Tombol Refresh / Muat Ulang Halaman"]
 
-    AppCrash[Komponen Error di Halaman Umum] -->|Ditangkap oleh| RootAppError[src/app/error.tsx<br/>Berada di dalam Root Layout]
-    RootAppError -->|Aksi Pemulihan| ResetApp[Tombol Coba Lagi reset() / Kembali ke Beranda]
+    AppCrash["Komponen Error di Halaman Umum"] -->|Ditangkap oleh| RootAppError["src/app/error.tsx<br/>Berada di dalam Root Layout"]
+    RootAppError -->|Aksi Pemulihan| ResetApp["Tombol Coba Lagi / Kembali ke Beranda"]
 
-    PropertyCrash[Crash Detail Properti / Dynamic Fetch] -->|Ditangkap oleh| PropertyError[src/app/properties/[id]/error.tsx<br/>Isolasi Kontekstual Halaman]
-    PropertyError -->|Aksi Pemulihan| ResetProperty[Tombol Coba Lagi / Jelajahi Properti Lain]
+    PropertyCrash["Crash Detail Properti / Dynamic Fetch"] -->|Ditangkap oleh| PropertyError["src/app/properties/[id]/error.tsx<br/>Isolasi Kontekstual Halaman"]
+    PropertyError -->|Aksi Pemulihan| ResetProperty["Tombol Coba Lagi / Jelajahi Properti Lain"]
 
-    NotFound404[Rute Tidak Ditemukan / notFound()] -->|Di-render oleh| GlobalNotFound[src/app/not-found.tsx]
-    NotFoundProp[ID Properti Tidak Valid / Terhapus] -->|Di-render oleh| PropNotFound[src/app/properties/[id]/not-found.tsx<br/>Rekomendasi Destinasi Populer]
+    NotFound404["Rute Tidak Ditemukan (404)"] -->|Di-render oleh| GlobalNotFound["src/app/not-found.tsx"]
+    NotFoundProp["ID Properti Tidak Ditemukan"] -->|Di-render oleh| PropNotFound["src/app/properties/[id]/not-found.tsx<br/>Rekomendasi Destinasi Populer"]
 ```
 
 #### Sanitasi Galat & Pencegahan Kebocoran Informasi (Zero-Leak Policy):
