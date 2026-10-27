@@ -249,7 +249,7 @@ erDiagram
         string[] evidenceUrls
         string hostResponse
         string[] hostEvidenceUrls
-        string status "OPEN | UNDER_REVIEW | RESOLVED_RELEASE_TO_HOST | RESOLVED_FULL_REFUND | RESOLVED_PARTIAL_REFUND"
+        string status "OPEN | UNDER_REVIEW | RESOLVED_RELEASE_TO_HOST | RESOLVED_FULL_REFUND | RESOLVED_PARTIAL_REFUND | REJECTED"
         int refundApprovedIdr
         int payoutApprovedIdr
         string adminNotes
@@ -262,6 +262,7 @@ erDiagram
         string id PK
         string hostId FK
         string bookingId FK
+        string payoutId FK "nullable"
         int amountIdr "Rp 250.000"
         string reason
         boolean isDeducted
@@ -303,6 +304,7 @@ erDiagram
     USER ||--o| HOST_BANK_ACCOUNT : "configures"
     USER ||--o{ PAYOUT : "requests"
     USER ||--o{ HOST_PENALTY : "incurs"
+    PAYOUT ||--o{ HOST_PENALTY : "deducts"
 
     PROPERTY ||--o{ BOOKING : "receives"
     PROPERTY ||--o{ BLOCKED_DATE : "locks"
@@ -426,13 +428,15 @@ stateDiagram-v2
         [*] --> DISPUTE_OPEN : Tamu Unggah Bukti (< 24 Jam sejak 14:00 WIB)
         DISPUTE_OPEN --> UNDER_REVIEW : Host Memberikan Tanggapan / Admin Menginvestigasi
         
-        UNDER_REVIEW --> RESOLVED_RELEASE_TO_HOST : Sengketa Ditolak (100% Hak Host)
+        UNDER_REVIEW --> RESOLVED_RELEASE_TO_HOST : Sengketa Selesai (100% Hak Host)
         UNDER_REVIEW --> RESOLVED_FULL_REFUND : 100% Full Refund Tamu (Host Gagal Layanan)
         UNDER_REVIEW --> RESOLVED_PARTIAL_REFUND : Kompensasi Proporsional Sebagian
+        UNDER_REVIEW --> REJECTED : Sengketa Ditolak Tanpa Klaim
         
-        RESOLVED_RELEASE_TO_HOST --> Sengketa_Selesai
-        RESOLVED_FULL_REFUND --> Sengketa_Selesai
-        RESOLVED_PARTIAL_REFUND --> Sengketa_Selesai
+        RESOLVED_RELEASE_TO_HOST --> Sengketa_Selesai : Terminal State Lock (Immutable)
+        RESOLVED_FULL_REFUND --> Sengketa_Selesai : Terminal State Lock (Immutable)
+        RESOLVED_PARTIAL_REFUND --> Sengketa_Selesai : Terminal State Lock (Immutable)
+        REJECTED --> Sengketa_Selesai : Terminal State Lock (Immutable)
     }
     Sengketa_Selesai --> [*]
 ```
@@ -553,14 +557,14 @@ sequenceDiagram
     Note over Midtrans,DB: JALUR 1 (PUSH): WEBHOOK RESMI ASINKRON
     Midtrans->>API: POST /api/webhooks/midtrans (Payload notifikasi)
     activate API
-    API->>API: Verifikasi Signature SHA-512 (orderId + statusCode + grossAmount + serverKey)
+    API->>API: Verifikasi Signature SHA-512 via crypto.timingSafeEqual (orderId + statusCode + grossAmount + serverKey)
     
-    alt Signature Valid & Status Settlement / Capture
+    alt Signature Valid & Bukan Status Terminal (Idempoten)
         API->>DB: UPDATE "Booking" SET paymentStatus='PAID', status='CONFIRMED', escrowStatus='HELD'
         API->>Resend: Kirim E-Voucher ke Tamu & Notifikasi Booking Baru ke Host
         API-->>Midtrans: HTTP 200 OK
-    else Signature Tidak Valid
-        API-->>Midtrans: HTTP 403 Invalid Signature
+    else Signature Tidak Valid / Sudah Berstatus Terminal
+        API-->>Midtrans: HTTP 403 Invalid Signature / HTTP 200 Idempotent Handled
     end
     deactivate API
 
@@ -605,19 +609,24 @@ sequenceDiagram
     API-->>Cron: HTTP 200 { releasedCount: X }
 
     Host->>API: POST /api/host/payouts { amount: Rp 1.500.000 }
-    API->>DB: Hitung (Total RELEASED - Total Withdrawn - Total Penalti)
+    API->>DB: prisma.$transaction(Serializable): Hitung Saldo & Kunci Penalti (payoutId)
     alt Saldo Mencukupi
-        API->>DB: INSERT INTO "Payout" (status='PENDING', amount, hostBankSnapshot)
+        API->>DB: INSERT INTO "Payout" (status='PENDING') & Tautkan HostPenalty isDeducted=true
         API-->>Host: HTTP 200 Permohonan penarikan diajukan
     else Saldo Tidak Mencukupi
         API-->>Host: HTTP 400 Saldo tidak mencukupi
     end
 
-    Admin->>API: PATCH /api/admin/payouts/[id] { status: 'COMPLETED', referenceNumber: 'TRF-BCA-9812' }
-    API->>DB: Validasi Payout != 'COMPLETED' (Terminal State Lock)
-    API->>DB: UPDATE "Payout" SET status='COMPLETED', notes=ref, processedAt=NOW
-    API->>Resend: Kirim Notifikasi Dana Berhasil Ditransfer ke Email Host
-    API-->>Admin: HTTP 200 Payout Approved
+    Admin->>API: PATCH /api/admin/payouts/[id] { status: 'COMPLETED' / 'FAILED', referenceNumber }
+    API->>DB: Validasi Payout bukan Terminal State (COMPLETED / FAILED)
+    alt Disetujui (COMPLETED)
+        API->>DB: UPDATE "Payout" SET status='COMPLETED', notes=ref, processedAt=NOW
+        API->>Resend: Kirim Notifikasi Dana Berhasil Ditransfer ke Email Host
+        API-->>Admin: HTTP 200 Payout Approved
+    else Ditolak (FAILED)
+        API->>DB: UPDATE "Payout" SET status='FAILED' & Pulihkan Penalti (isDeducted=false, payoutId=null)
+        API-->>Admin: HTTP 200 Payout Rejected & Penalty Restored
+    end
 
     Note over Guest,Admin: SKENARIO SENGKETA (DISPUTE & REFUND)
     Guest->>API: POST /api/disputes { bookingId, reason, description, evidenceUrls }
@@ -625,8 +634,9 @@ sequenceDiagram
     API->>DB: UPDATE "Booking" SET escrowStatus='DISPUTED' & INSERT INTO "Dispute"
     API-->>Guest: HTTP 200 Sengketa aktif terdaftar (Dana Ditahan)
 
-    Admin->>API: PATCH /api/admin/disputes/[id] { resolution: 'RESOLVED_FULL_REFUND' }
-    API->>DB: UPDATE "Booking" SET escrowStatus='REFUNDED_TO_GUEST', refundStatus='PENDING_ADMIN_TRANSFER'
+    Admin->>API: PATCH /api/admin/disputes/[id] { resolution, refundApprovedIdr, payoutApprovedIdr }
+    API->>API: Validasi Terminal State & Plafon (refund + payout <= bookingTotal)
+    API->>DB: UPDATE "Dispute" SET status=resolution & UPDATE "Booking" escrowStatus / refundStatus
     Admin->>API: PATCH /api/admin/refunds/[id] { status: 'COMPLETED', proofUrl: '...' }
     API->>DB: UPDATE "Booking" SET refundStatus='COMPLETED', refundedAt=NOW
     API-->>Admin: HTTP 200 Refund Selesai Ditransfer
@@ -653,13 +663,31 @@ Platform membagi hak akses ke dalam 3 hierarki peran (*Role*) dan 1 status verif
 | **Ekspor Subscriber Promo CSV** | ❌ Terlarang | ❌ Terlarang | ❌ Terlarang | ✅ Akses Penuh | Endpoint `/api/admin/marketing/subscribers` |
 | **Ekspor Data Pribadi (UU PDP)** | ✅ Diizinkan | ✅ Diizinkan | ✅ Diizinkan | ✅ Diizinkan | Sesi Pribadi (`/api/user/export-data`) |
 
-### Mekanisme Keamanan Berlapis
+### Mekanisme Keamanan Berlapis (Defense in Depth)
 
 1. **Edge Middleware Guard (`src/middleware.ts`):** Mengadang akses ilegal ke seluruh rute `/admin/*` dan `/api/admin/*` sebelum masuk ke runtime rendering.
-2. **Server-Side Session Check:** Setiap Route Handler memverifikasi token sesi `await auth()`.
-3. **Database Row-Level Integrity:** Pemeriksaan eksplisit bahwa `record.userId === session.user.id` sebelum mutasi data dijalankan.
-4. **Signature Hashing:** Webhook pembayaran Midtrans diverifikasi menggunakan enkripsi SHA-512 dengan `MIDTRANS_SERVER_KEY`.
-5. **Dual-Channel Payment Verification (Push + Pull):** Konfirmasi status pembayaran `PAID` dan `CONFIRMED` diisolasi secara ketat pada 2 saluran terverifikasi: Webhook resmi ber-signature SHA-512 (Push) atau Active Query Server-to-Server ke Midtrans API via `/api/payment/sync` (Pull). Endpoint manipulasi langsung sisi klien (`/api/payment/success`) dinonaktifkan permanen (HTTP 405).
+2. **Server-Side Session Check & Anti-IDOR:** Setiap Route Handler memverifikasi token sesi `await auth()` dan validasi kepemilikan data (`record.userId === session.user.id` / `property.hostId === session.user.id`).
+3. **Database Row-Level Integrity & Interactive Locking:** Penguncian konkurensi tingkat baris `FOR UPDATE` saat checkout dan transaksi interaktif serializable saat pengajuan penarikan dana host (`/api/host/payouts`) untuk mencegah *double withdrawal*.
+4. **Timing-Safe Webhook Signature Hashing:** Notifikasi pembayaran Midtrans diverifikasi menggunakan enkripsi SHA-512 dengan `crypto.timingSafeEqual` untuk menutup celah *timing attack*, serta pemrosesan idempoten yang menjaga status terminal escrow (`DISPUTED`, `RELEASED`, `CANCELLED`).
+5. **Dual-Channel Payment Verification (Push + Pull):** Konfirmasi status pembayaran `PAID` dan `CONFIRMED` diisolasi secara ketat pada 2 saluran terverifikasi: Webhook resmi ber-signature SHA-512 (Push) atau Active Query Server-to-Server ke Midtrans API via `/api/payment/sync` (Pull). Endpoint bypass langsung sisi klien (`/api/bookings` bypass dan `/api/payment/success`) dinonaktifkan permanen (HTTP 405).
+6. **Integritas Escrow & Terminal State Locks:**
+   - Pembatalan pesanan berstatus sengketa (`DISPUTED`) atau escrow telah dirilis (`RELEASED`) diblokir di tingkat server (HTTP 400).
+   - Resolusi sengketa dibatasi plafon total pesanan (`finalRefundApproved + finalPayoutApproved <= bookingTotal`) dan berstatus terminal (*immutable*).
+   - Penolakan payout (`FAILED`) oleh admin otomatis memulihkan penalti host menjadi `isDeducted: false`.
+7. **Mass-Assignment Guard & Otorisasi Mutasi:**
+   - Pembaruan properti (`PUT /api/properties/[id]`) menggunakan *explicit field whitelist*, mencegah manipulasi atribut terproteksi (`hostId`, `cancellationCount`, `isPublished`, `id`).
+   - Validasi rating ulasan murni integer 1–5 dan pencegahan ulasan duplikat per reservasi.
+   - Properti dengan reservasi aktif yang belum check-out terlindungi dari penghapusan (`DELETE /api/properties/[id]`).
+8. **Kepatuhan Privasi Data UU PDP No. 27/2022:**
+   - Penghapusan seluruh password hash bcrypt, NIK KTP, URL dokumen identitas fisik, dan kontak darurat pribadi dari payload React Server Components (RSC Flight HTML) di `/properties/[id]`, `/dashboard`, dan `/admin` melalui Prisma `select` eksplisit.
+   - Hak Akses Subjek Data: Fitur unduh berkas JSON data akun lengkap via `/api/user/export-data`.
+9. **Pengerasan Upload File (Server-Side Guard):**
+   - Validasi ketat MIME type (`image/jpeg`, `image/png`, `image/webp`), menolak SVG/HTML/eksekutabel (HTTP 400).
+   - Batas ukuran berkas maksimal 5 MB dievaluasi *sebelum* alokasi buffer RAM untuk mencegah crash OOM / DoS (HTTP 413 Payload Too Large).
+   - Isolasi folder Cloudinary terpisah untuk `properties`, `avatars`, `kyc`, dan `refunds`.
+10. **Fail-Safe Secrets & Cron Security:**
+    - Seluruh kredensial (Cloudinary, Midtrans) murni dibaca dari environment variables tanpa fallback string dummy/live key di source code.
+    - Endpoint otomatisasi `/api/cron/release-escrow` diwajibkan menyertakan header `Authorization: Bearer ${CRON_SECRET}` (HTTP 401 Unauthorized jika tidak valid).
 
 ---
 
@@ -683,23 +711,29 @@ Platform membagi hak akses ke dalam 3 hierarki peran (*Role*) dan 1 status verif
 | Metode | Jalur Endpoint (`Path`) | Hak Akses | Parameter / Body Utama | Deskripsi Tugas |
 | :---: | :--- | :---: | :--- | :--- |
 | `POST` | `/api/auth/register` | Publik | `name, email, password` | Registrasi akun baru, hashing password, inisiasi role `GUEST`. |
-| `GET` | `/api/properties` | Publik | `lat, lng, radius` | Pencarian listing akomodasi aktif berdasarkan koordinat geografis. |
+| `GET` | `/api/properties` | Publik | `lat, lng, radius` | Pencarian listing akomodasi aktif berdasarkan koordinat geografis dan sinkronisasi tanggal kalender diblokir. |
 | `POST` | `/api/properties` | User (Host) | Payload properti, fasilitas, foto | Mendaftarkan properti baru (status draft jika belum KYC). |
-| `GET` | `/api/properties/[id]` | Publik | `id` (Path param) | Detail lengkap akomodasi beserta riwayat ulasan terverifikasi. |
-| `POST` | `/api/payment/checkout` | Logged-in User | `propertyId, startDate, endDate, guests` | Penguncian tanggal (FOR UPDATE), pembuatan token Midtrans Snap dengan callback URL, dan sinkronisasi `midtransOrderId`. |
+| `GET` | `/api/properties/[id]` | Publik | `id` (Path param) | Detail lengkap akomodasi (RSC payload disanitasi dari password hash, NIK KTP, & data sensitif UU PDP). |
+| `PUT` | `/api/properties/[id]` | Host Pemilik | Whitelist payload listing | Pembaruan properti terlindungi dari mass-assignment (atribut `hostId`, `cancellationCount`, `isPublished`, `id` dijaga ketat). |
+| `DELETE`| `/api/properties/[id]`| Host Pemilik | `id` (Path param) | Penghapusan listing dengan proteksi reservasi aktif yang belum check-out. |
+| `POST` | `/api/properties/blocked-dates` | Host Pemilik | `propertyId, startDate, endDate, reason` | Pemblokiran tanggal manual oleh host dengan validasi pencegahan tabrakan reservasi aktif. |
+| `POST` | `/api/bookings` | *Disabled* | - | Dinonaktifkan (405). Seluruh alur reservasi wajib melalui checkout pembayaran resmi `/api/payment/checkout`. |
+| `POST` | `/api/payment/checkout` | Logged-in User | `propertyId, startDate, endDate, guests` | Penguncian tanggal (`FOR UPDATE`), validasi kapasitas tamu (`guests <= maxGuests`), validasi tanggal masa depan, pembuatan Snap token. |
 | `POST` | `/api/payment/sync` | Guest / Host / Admin | `bookingId` | Active Query Server-to-Server ke status transaksi Midtrans API (Dual-Verification), pembaruan atomik status `PAID`, dan pengiriman email notifikasi. |
 | `POST` | `/api/payment/success` | *Disabled* | - | Dinonaktifkan (405) demi keamanan. Status pembayaran murni diproses via webhook Midtrans atau query resmi `/api/payment/sync`. |
-| `POST` | `/api/webhooks/midtrans` | Midtrans Server| Payload notifikasi Midtrans | Webhook resmi pembaruan status transaksi via signature SHA-512. |
-| `PATCH`| `/api/bookings/[id]/cancel` | Guest / Host | `cancelReason, bankDetails` | Pembatalan pesanan terstruktur (perhitungan penalti & refund). |
+| `POST` | `/api/webhooks/midtrans` | Midtrans Server| Payload notifikasi Midtrans | Webhook resmi pembaruan status transaksi via signature SHA-512 `crypto.timingSafeEqual` dan idempoten. |
+| `PATCH`| `/api/bookings/[id]/cancel` | Guest / Host | `cancelReason, bankDetails` | Pembatalan pesanan terstruktur (terkunci ketat jika booking berstatus `DISPUTED` atau escrow `RELEASED`). |
 | `GET` | `/api/host/payouts` | Host | - | Mengambil riwayat payout, saldo tertahan (HELD), dan saldo siap tarik. |
-| `POST` | `/api/host/payouts` | Host | `amount, notes` | Mengajukan penarikan dana ke rekening bank terdaftar (Status PENDING). |
-| `POST` | `/api/kyc/submit` | Host | `idCardUrl, idCardNumber` | Mengajukan verifikasi KTP untuk publikasi listing akomodasi. |
+| `POST` | `/api/host/payouts` | Host | `amount, notes` | Mengajukan penarikan dana ke rekening bank via transaksi atomik Prisma, penguncian serializable, dan penautan `payoutId` penalti. |
+| `POST` | `/api/kyc/submit` | Host | Multipart/JSON `idCardUrl, idCardNumber, ...` | Mengajukan verifikasi KTP dengan validasi berkas MIME, batas 5MB, dan folder Cloudinary `kyc`. |
+| `POST` | `/api/upload` | Logged-in User | Multipart `file, folder` | Unggah file dengan validasi MIME (`image/jpeg, image/png, image/webp`), batas ukuran 5MB (HTTP 413), dan folder terisolasi (`properties`, `avatars`, `kyc`, `refunds`). |
+| `POST` | `/api/reviews` | Guest Pemesan | `bookingId, rating, comment` | Pengiriman ulasan & rating pasca-menginap dengan validasi integer 1–5 dan pencegahan ulasan duplikat. |
 | `POST` | `/api/disputes` | Guest | `bookingId, reason, evidenceUrls` | Pengajuan keluhan resmi tamu dalam 24 jam pertama check-in. |
-| `GET` | `/api/cron/release-escrow`| Cron Worker | Header `Authorization: Bearer` | Otomatisasi pelepasan dana escrow jatuh tempo ke saldo host. |
-| `PATCH`| `/api/admin/payouts/[id]` | **ADMIN** | `status, referenceNumber, notes` | Persetujuan semi-manual pencairan dana host dengan kunci status. |
+| `GET` | `/api/cron/release-escrow`| Cron Worker | Header `Authorization: Bearer` | Otomatisasi pelepasan dana escrow jatuh tempo ke saldo host (Wajib token `CRON_SECRET`). |
+| `PATCH`| `/api/admin/payouts/[id]` | **ADMIN** | `status, referenceNumber, notes` | Persetujuan semi-manual pencairan dana host dengan kunci terminal status & pemulihan penalti jika ditolak (`FAILED`). |
 | `GET` | `/api/admin/marketing/subscribers` | **ADMIN** | `format=json|csv` | Ekspor data tamu yang opt-in email promosi marketing (CSV/JSON). |
 | `PATCH`| `/api/admin/kyc/[id]` | **ADMIN** | `status: VERIFIED|REJECTED, reason` | Verifikasi kelayakan dokumen identitas KTP mitra host. |
-| `PATCH`| `/api/admin/disputes/[id]`| **ADMIN** | `resolution, refundApprovedIdr` | Resolusi sengketa oleh admin (Full refund / Partial / Release host). |
+| `PATCH`| `/api/admin/disputes/[id]`| **ADMIN** | `resolution, refundApprovedIdr` | Resolusi sengketa oleh admin dengan validasi batasan nominal (`refund + payout <= total`) dan kunci terminal status. |
 | `PATCH`| `/api/admin/refunds/[id]` | **ADMIN** | `status: COMPLETED, proofUrl` | Konfirmasi transfer manual pengembalian dana ke rekening tamu. |
 | `GET` | `/api/user/export-data` | Logged-in User | - | Ekspor berkas JSON seluruh riwayat data akun (Kepatuhan UU PDP). |
 
@@ -804,4 +838,4 @@ Tabel berikut mencantumkan variabel konfigurasi yang dibutuhkan oleh aplikasi (t
 | `CLOUDINARY_API_SECRET` | **Wajib** | Kunci rahasia Cloudinary untuk menandatangani *upload preset* berkas. |
 | `RESEND_API_KEY` | **Wajib** | API key Resend untuk pengiriman email transaksional resmi. |
 | `EMAIL_FROM` | Opsional | Identitas pengirim email resmi (Default: `Ruang Rehat <onboarding@resend.dev>`). |
-| `CRON_SECRET` | Opsional | Token otorisasi `Bearer` untuk mengamankan trigger otomatisasi `/api/cron/release-escrow`. |
+| `CRON_SECRET` | **Wajib** | Token otorisasi `Bearer` yang wajib dikonfigurasi untuk melindungi endpoint otomatisasi `/api/cron/release-escrow`. |

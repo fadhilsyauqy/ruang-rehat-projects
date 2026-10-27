@@ -125,6 +125,9 @@ CLOUDINARY_API_SECRET="your_api_secret"
 # Resend Email API
 RESEND_API_KEY="re_xxxx"
 EMAIL_FROM="Ruang Rehat <onboarding@resend.dev>"
+
+# Cron Worker Escrow Release
+CRON_SECRET="kunci_rahasia_cron_worker_disini"
 ```
 
 ### 4. Sinkronisasi Skema Database & Seeding
@@ -161,7 +164,7 @@ Untuk mempelajari cetak biru arsitektur sistem secara menyeluruh, silakan baca b
 - **State Machine Diagrams:** Transisi status siklus hidup reservasi, pembayaran, dana escrow, payout host, dan audit KYC.
 - **Sequence Diagrams:** Alur interaksi Frontend $\rightarrow$ Route Handlers $\rightarrow$ PostgreSQL $\rightarrow$ Midtrans / Resend.
 - **Matriks Hak Akses (RBAC):** Tabel granular izin fitur untuk Guest, Host Unverified, Host Verified, dan Administrator.
-- **Katalog API & Server Actions:** Dokumentasi 29 Route Handlers RESTful dan fungsi mutasi data.
+- **Katalog API & Server Actions:** Dokumentasi 30+ Route Handlers RESTful dan fungsi mutasi data.
 - **Formula Finansial & Kebijakan Bisnis:** Perhitungan matematis sewa, *cleaning fee*, komisi split-fee, dan aturan pembatalan.
 
 ---
@@ -186,12 +189,41 @@ src/
 
 ---
 
-## 🛡️ Keamanan & Kepatuhan
+## 🛡️ Keamanan & Kepatuhan (Defense in Depth)
 
-- **Data Protection:** Seluruh kata sandi dienkripsi menggunakan algoritma `bcryptjs` dengan *salt rounds* standar industri.
-- **Pessimistic Locking:** Mencegah kondisi balapan (*race condition*) dan pemesanan ganda pada kamar akomodasi.
-- **Audit Trail Payout:** Seluruh pencairan dana host berstatus `COMPLETED` dan `FAILED` dilindungi oleh *Terminal State Lock* (tidak dapat diubah atau ditolak ganda).
-- **Perlindungan Webhook:** Validasi tanda tangan digital SHA-512 pada notifikasi gateway pembayaran Midtrans untuk menangkal manipulasi parameter request.
+Sistem menerapkan arsitektur keamanan berlapis yang telah melalui audit menyeluruh:
+
+1. **Kepatuhan Privasi Data UU PDP No. 27/2022:**
+   - Sanitasi payload React Server Components (RSC Flight HTML) di `/properties/[id]`, `/dashboard`, dan `/admin` menggunakan Prisma `select` eksplisit.
+   - Password hash bcrypt, NIK KTP, URL berkas identitas fisik, dan nomor kontak darurat pribadi terisolasi di sisi server dan tidak pernah bocor ke klien browser.
+   - Hak Akses Subjek Data: Fitur ekspor berkas JSON data riwayat akun lengkap via `/api/user/export-data`.
+
+2. **Pengerasan Upload Berkas (Server-Side RAM & MIME Guard):**
+   - Validasi ketat MIME type (`image/jpeg`, `image/png`, `image/webp`), menolak SVG/HTML/berkas eksekutabel (HTTP 400).
+   - Batas ukuran berkas 5 MB dievaluasi *sebelum* alokasi buffer RAM untuk mencegah crash OOM dan serangan Denial of Service (HTTP 413 Payload Too Large).
+   - Isolasi folder Cloudinary terpisah untuk `properties`, `avatars`, `kyc`, dan `refunds`.
+
+3. **Timing-Safe Cryptographic Signature & Webhook Idempoten:**
+   - Verifikasi notifikasi pembayaran Midtrans dan worker Cron menggunakan `crypto.timingSafeEqual` untuk menutup celah *timing attack*.
+   - Pemrosesan idempoten yang menjaga status terminal escrow (`DISPUTED`, `RELEASED`, `CANCELLED`) dari *replay attack*.
+
+4. **Integritas Escrow & Terminal State Locks:**
+   - Pembatalan pesanan sepihak diblokir ketat di tingkat server jika booking sedang bersengketa (`DISPUTED`) atau dana telah dirilis (`RELEASED`) (HTTP 400).
+   - Resolusi sengketa dibatasi plafon total pesanan (`finalRefundApproved + finalPayoutApproved <= bookingTotal`) dan berstatus terminal (*immutable*).
+   - Penolakan payout (`FAILED`) oleh admin otomatis memulihkan penalti host menjadi `isDeducted: false`.
+
+5. **Mass-Assignment Guard & Otorisasi Mutasi:**
+   - Pembaruan properti (`PUT /api/properties/[id]`) menggunakan *explicit field whitelist*, mencegah manipulasi atribut terproteksi (`hostId`, `cancellationCount`, `isPublished`, `id`).
+   - Validasi rating ulasan murni integer 1–5 dan pencegahan ulasan duplikat per reservasi.
+   - Properti dengan reservasi aktif yang belum check-out terlindungi dari penghapusan (`DELETE /api/properties/[id]`).
+
+6. **Pessimistic Locking & Interactive Concurrency:**
+   - Penguncian baris database tingkat rendah (`SELECT ... FOR UPDATE`) saat inisiasi pemesanan untuk mencegah *double booking*.
+   - Transaksi interaktif serializable pada penarikan dana host (`/api/host/payouts`) untuk mencegah *double withdrawal*.
+
+7. **Fail-Safe Secrets & Cron Security:**
+   - Seluruh kredensial (Cloudinary, Midtrans) murni dibaca dari environment variables tanpa fallback string dummy/live key di source code.
+   - Endpoint otomatisasi `/api/cron/release-escrow` diwajibkan menyertakan header `Authorization: Bearer ${CRON_SECRET}` (HTTP 401 Unauthorized jika tidak valid).
 
 ---
 
