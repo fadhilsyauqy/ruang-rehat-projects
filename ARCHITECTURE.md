@@ -406,6 +406,10 @@ stateDiagram-v2
 
 ### 3.3 Siklus Hidup Verifikasi KYC & Penyelesaian Sengketa (Dispute)
 
+#### 3.3.1 Siklus Verifikasi Identitas Host (KYC)
+
+Menggambarkan alur verifikasi berkas identitas host mulai dari pengunggahan KTP hingga persetujuan atau penolakan oleh admin:
+
 ```mermaid
 stateDiagram-v2
     [*] --> UNVERIFIED : User Mendaftar Akun Baru
@@ -421,23 +425,27 @@ stateDiagram-v2
     
     REJECTED --> PENDING : Host Memperbaiki Data & Upload Ulang KTP
     VERIFIED --> [*] : Host Aktif Terverifikasi
+```
 
-    --
+#### 3.3.2 Siklus Penyelesaian Sengketa Reservasi (Dispute)
 
-    state SIKLUS_SENGKETA {
-        [*] --> DISPUTE_OPEN : Tamu Unggah Bukti (< 24 Jam sejak 14:00 WIB)
-        DISPUTE_OPEN --> UNDER_REVIEW : Host Memberikan Tanggapan / Admin Menginvestigasi
-        
-        UNDER_REVIEW --> RESOLVED_RELEASE_TO_HOST : Sengketa Selesai (100% Hak Host)
-        UNDER_REVIEW --> RESOLVED_FULL_REFUND : 100% Full Refund Tamu (Host Gagal Layanan)
-        UNDER_REVIEW --> RESOLVED_PARTIAL_REFUND : Kompensasi Proporsional Sebagian
-        UNDER_REVIEW --> REJECTED : Sengketa Ditolak Tanpa Klaim
-        
-        RESOLVED_RELEASE_TO_HOST --> Sengketa_Selesai : Terminal State Lock (Immutable)
-        RESOLVED_FULL_REFUND --> Sengketa_Selesai : Terminal State Lock (Immutable)
-        RESOLVED_PARTIAL_REFUND --> Sengketa_Selesai : Terminal State Lock (Immutable)
-        REJECTED --> Sengketa_Selesai : Terminal State Lock (Immutable)
-    }
+Menggambarkan investigasi dan mediasi sengketa reservasi bermasalah hingga keputusan akhir yang bersifat terkunci (*immutable*):
+
+```mermaid
+stateDiagram-v2
+    [*] --> DISPUTE_OPEN : Tamu Unggah Bukti (< 24 Jam sejak 14:00 WIB)
+    DISPUTE_OPEN --> UNDER_REVIEW : Host Memberikan Tanggapan / Admin Menginvestigasi
+    
+    UNDER_REVIEW --> RESOLVED_RELEASE_TO_HOST : Sengketa Selesai (100% Hak Host)
+    UNDER_REVIEW --> RESOLVED_FULL_REFUND : 100% Full Refund Tamu (Host Gagal Layanan)
+    UNDER_REVIEW --> RESOLVED_PARTIAL_REFUND : Kompensasi Proporsional Sebagian
+    UNDER_REVIEW --> REJECTED : Sengketa Ditolak Tanpa Klaim
+    
+    RESOLVED_RELEASE_TO_HOST --> Sengketa_Selesai : Terminal State Lock (Immutable)
+    RESOLVED_FULL_REFUND --> Sengketa_Selesai : Terminal State Lock (Immutable)
+    RESOLVED_PARTIAL_REFUND --> Sengketa_Selesai : Terminal State Lock (Immutable)
+    REJECTED --> Sengketa_Selesai : Terminal State Lock (Immutable)
+
     Sengketa_Selesai --> [*]
 ```
 
