@@ -16,7 +16,7 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 | **Fase 4** | Keamanan Webhook Midtrans, Timing-Safe Signature, & Idempotensi | `COMPLETED` | 3 Task |
 | **Fase 5** | Integritas Escrow, Atomic Payout, & Batasan Finansial Resolusi Sengketa | `COMPLETED` | 5 Task |
 | **Fase 6** | Otorisasi Ketat Server-Side (RBAC), Anti-IDOR, & Mass-Assignment Guard | `COMPLETED` | 3 Task |
-| **Fase 7** | Kepatuhan UU PDP No. 27/2022 & Eliminasi Data Leak pada RSC Payload | `PENDING` | 3 Task |
+| **Fase 7** | Kepatuhan UU PDP No. 27/2022 & Eliminasi Data Leak pada RSC Payload | `COMPLETED` | 3 Task |
 | **Fase 8** | Pengerasan Upload File (MIME Validation, Size Limit, & Sanitasi Folder) | `PENDING` | 3 Task |
 
 ---
@@ -183,7 +183,7 @@ Mencegah kebocoran data sensitif pribadi (password hash bcrypt, NIK KTP, URL fot
 - `src/app/admin/page.tsx` (Baris 40–44)
 
 ### Checklist Task:
-- [ ] **Task 7.1: Seleksi Eksplisit Data Host & Guest pada Halaman Detail Properti (`properties/[id]/page.tsx`)**
+- [x] **Task 7.1: Seleksi Eksplisit Data Host & Guest pada Halaman Detail Properti (`properties/[id]/page.tsx`)**
   - Ubah `host: true` menjadi seleksi eksplisit hanya field publik yang dibutuhkan UI:
     ```ts
     host: {
@@ -210,10 +210,10 @@ Mencegah kebocoran data sensitif pribadi (password hash bcrypt, NIK KTP, URL fot
     }
     ```
   - **100% hilangkan:** `password`, `idCardNumber`, `idCardUrl`, `phoneNumber`, `address`, `billingTaxId`, `emergencyContact*` dari transmisi ke client browser publik.
-- [ ] **Task 7.2: Seleksi Eksplisit Data Pemesan & Host pada Dashboard Pengguna (`dashboard/page.tsx`)**
+- [x] **Task 7.2: Seleksi Eksplisit Data Pemesan & Host pada Dashboard Pengguna (`dashboard/page.tsx`)**
   - Pada query `incomingBookings` (tampilan Host), pilih hanya field tamu yang relevan (`id, name, preferredName, email, phoneNumber, address, emergencyContact*`). Blokir `password`, `idCardUrl`, dan `idCardNumber`.
   - Pada query `myBookings` (tampilan Tamu), pilih hanya field host yang relevan (`id, name, preferredName, email, phoneNumber, image`). Blokir `password`, `idCardUrl`, `idCardNumber`, dan `billingTaxId`.
-- [ ] **Task 7.3: Hapus Password Hash Seluruh Pengguna dari Komponen Admin (`admin/page.tsx`)**
+- [x] **Task 7.3: Hapus Password Hash Seluruh Pengguna dari Komponen Admin (`admin/page.tsx`)**
   - Pada query `prisma.user.findMany({ include: { bankAccount: true } })`, gunakan `select` eksplisit yang mencakup seluruh data tata kelola admin, namun **secara tegas mengecualikan kolom `password`**.
 
 ---

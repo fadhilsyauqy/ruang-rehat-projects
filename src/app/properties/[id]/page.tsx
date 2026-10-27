@@ -37,7 +37,16 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
   const property = await prisma.property.findUnique({
     where: { id: resolvedParams.id },
     include: {
-      host: true,
+      host: {
+        select: {
+          id: true,
+          name: true,
+          preferredName: true,
+          image: true,
+          createdAt: true,
+          kycStatus: true,
+        }
+      },
       bookings: {
         where: { 
           status: { not: 'CANCELLED' },
@@ -49,7 +58,17 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
         select: { startDate: true, endDate: true, reason: true }
       },
       reviews: {
-        include: { guest: true }
+        include: {
+          guest: {
+            select: {
+              id: true,
+              name: true,
+              preferredName: true,
+              image: true,
+              hideLastNameReview: true,
+            }
+          }
+        }
       },
       favorites: {
         where: { userId: session?.user?.id || 'none' }

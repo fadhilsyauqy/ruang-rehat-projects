@@ -15,10 +15,38 @@ export type {
 
 /**
  * Tipe data Pengguna untuk Portal Audit Admin
- * (Termasuk relasi rekening bank host jika ada)
+ * (Termasuk data tata kelola audit dan relasi rekening bank host, password hash secara tegas dikecualikan)
  */
 export type AdminUserItem = Prisma.UserGetPayload<{
-  include: {
+  select: {
+    id: true;
+    name: true;
+    preferredName: true;
+    email: true;
+    emailVerified: true;
+    image: true;
+    phoneNumber: true;
+    address: true;
+    emergencyContactName: true;
+    emergencyContactPhone: true;
+    emergencyContactRelation: true;
+    kycStatus: true;
+    idCardUrl: true;
+    idCardNumber: true;
+    kycRejectReason: true;
+    role: true;
+    createdAt: true;
+    updatedAt: true;
+    hideLastNameReview: true;
+    hideSearchEngines: true;
+    readReceipts: true;
+    notifyTripReminder: true;
+    notifyPromoMarketing: true;
+    notifyHostBooking: true;
+    notifyHostPayout: true;
+    billingCompanyName: true;
+    billingTaxId: true;
+    billingAddress: true;
     bankAccount: true;
   };
 }>;

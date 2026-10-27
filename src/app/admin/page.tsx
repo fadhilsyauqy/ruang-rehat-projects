@@ -39,7 +39,37 @@ export default async function AdminPage({
   // Ambil seluruh data ekosistem marketplace untuk audit
   const [users, bookings, payouts, properties, disputes, systemSetting] = await Promise.all([
     prisma.user.findMany({
-      include: { bankAccount: true },
+      select: {
+        id: true,
+        name: true,
+        preferredName: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        phoneNumber: true,
+        address: true,
+        emergencyContactName: true,
+        emergencyContactPhone: true,
+        emergencyContactRelation: true,
+        kycStatus: true,
+        idCardUrl: true,
+        idCardNumber: true,
+        kycRejectReason: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        hideLastNameReview: true,
+        hideSearchEngines: true,
+        readReceipts: true,
+        notifyTripReminder: true,
+        notifyPromoMarketing: true,
+        notifyHostBooking: true,
+        notifyHostPayout: true,
+        billingCompanyName: true,
+        billingTaxId: true,
+        billingAddress: true,
+        bankAccount: true,
+      },
       orderBy: { createdAt: "desc" }
     }),
     prisma.booking.findMany({

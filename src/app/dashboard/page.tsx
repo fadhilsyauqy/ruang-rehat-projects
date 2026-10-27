@@ -73,7 +73,23 @@ export default async function Dashboard({
 
   const myBookings = await prisma.booking.findMany({
     where: { guestId: session.user.id! },
-    include: { property: true, reviews: true },
+    include: {
+      property: {
+        include: {
+          host: {
+            select: {
+              id: true,
+              name: true,
+              preferredName: true,
+              email: true,
+              phoneNumber: true,
+              image: true,
+            }
+          }
+        }
+      },
+      reviews: true
+    },
     orderBy: { createdAt: 'desc' }
   })
 
@@ -108,7 +124,23 @@ export default async function Dashboard({
 
   const incomingBookings = role === 'HOST' ? await prisma.booking.findMany({
     where: { property: { hostId: session.user.id } },
-    include: { property: true, guest: true },
+    include: {
+      property: true,
+      guest: {
+        select: {
+          id: true,
+          name: true,
+          preferredName: true,
+          email: true,
+          phoneNumber: true,
+          address: true,
+          emergencyContactName: true,
+          emergencyContactPhone: true,
+          emergencyContactRelation: true,
+          image: true,
+        }
+      }
+    },
     orderBy: { createdAt: 'desc' }
   }) : []
 

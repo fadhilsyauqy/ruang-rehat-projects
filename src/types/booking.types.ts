@@ -48,22 +48,48 @@ export type AdminBookingItem = Prisma.BookingGetPayload<{
 
 /**
  * Tipe data Booking masuk untuk Dasbor Host
- * (Termasuk data lengkap properti dan akun tamu)
+ * (Termasuk data lengkap properti dan akun tamu dengan proteksi PII UU PDP)
  */
 export type HostIncomingBooking = Prisma.BookingGetPayload<{
   include: {
     property: true;
-    guest: true;
+    guest: {
+      select: {
+        id: true;
+        name: true;
+        preferredName: true;
+        email: true;
+        phoneNumber: true;
+        address: true;
+        emergencyContactName: true;
+        emergencyContactPhone: true;
+        emergencyContactRelation: true;
+        image: true;
+      };
+    };
   };
 }>;
 
 /**
  * Tipe data Riwayat Perjalanan Tamu
- * (Termasuk data properti dan ulasan yang telah diberikan)
+ * (Termasuk data properti, data kontak host terlindungi, dan ulasan yang telah diberikan)
  */
 export type GuestTripBooking = Prisma.BookingGetPayload<{
   include: {
-    property: true;
+    property: {
+      include: {
+        host: {
+          select: {
+            id: true;
+            name: true;
+            preferredName: true;
+            email: true;
+            phoneNumber: true;
+            image: true;
+          };
+        };
+      };
+    };
     reviews: true;
   };
 }>;
