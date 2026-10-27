@@ -35,6 +35,15 @@
    - Tamu dapat mengekspor data pribadi akun dalam format JSON terstruktur (Hak Akses Subjek Data UU PDP).
    - Tersedia opsi penambahan data NPWP perusahaan dan nama entitas bisnis pada e-voucher resmi untuk keperluan *reimbursement* perjalanan dinas.
 
+6. **Frontend UI/UX Resilience & Zero-Blocking Architecture:**
+   - **Zero Browser Dialogs:** Eliminasi total dialog pemblokir thread peramban (`window.alert()` dan `window.confirm()`) digantikan oleh sistem `ToastProvider` terpusat dan modal asinkronus `ConfirmDialog` berbasis Base UI yang ramah aksesibilitas.
+   - **Proteksi In-Flight Action:** Penonaktifan otomatis tombol mutasi (*disabled state*) dan indikator pemuatan (*loading spinner*) selama proses asinkronus berlangsung untuk mencegah transmisi ganda (*double submission*).
+   - **Client-Side Pre-Upload RAM Guard:** Pustaka validasi berkas (`src/lib/file-validation.ts`) memeriksa ukuran (< 5MB) dan MIME type di peramban sebelum transmisi jaringan dimulai, menghemat kuota pengguna dan mencegah beban komputasi server sia-sia.
+   - **Anti-Hanging Midtrans Payment Flow:** Penanganan komprehensif seluruh callback Snap (`onClose`, `onPending`, `onError`) serta tombol sinkronisasi manual status pembayaran (`/api/payment/verify-status`) jika terjadi gangguan koneksi atau webhook tertunda.
+   - **Precision Calendar & Date Masking:** Auto-masking pengetikan manual tanggal (`DD/MM/YYYY`) dengan validasi kalender WIB (UTC+7), tahun kabisat, dan deteksi benturan tanggal reservasi/blokir host secara seketika (*real-time*).
+   - **Hierarchical Error Boundaries & Contextual 404:** Struktur penanganan galat bertingkat (`global-error.tsx`, `error.tsx`, dan `properties/[id]/error.tsx`) dengan sanitasi `error.digest` (Incident ID) tanpa kebocoran *stack trace*.
+   - **100% Symmetric Localization:** Kamus dwibahasa (ID/EN) terpadu dengan 421 translation keys tanpa risiko nilai `undefined`.
+
 ---
 
 ## 🚀 Fitur Berdasarkan Peran Pengguna
@@ -68,7 +77,7 @@
 | :--- | :--- |
 | **Framework Utama** | [Next.js 16 (App Router)](https://nextjs.org/) + [React 19](https://react.dev/) |
 | **Bahasa Pemrograman** | [TypeScript (Strict Mode)](https://www.typescriptlang.org/) |
-| **Styling & Tampilan** | [Tailwind CSS v4](https://tailwindcss.com/) + [Radix / Base UI](https://base-ui.com/) + [Lucide Icons](https://lucide.dev/) |
+| **Styling & Tampilan** | [Tailwind CSS v4](https://tailwindcss.com/) + [Radix / Base UI](https://base-ui.com/) + [Lucide Icons](https://lucide.dev/) + Toast Provider |
 | **Basis Data & ORM** | [PostgreSQL](https://www.postgresql.org/) + [Prisma ORM 5.22](https://www.prisma.io/) |
 | **Autentikasi & RBAC** | [NextAuth.js v5 (Auth.js Beta)](https://authjs.dev/) + Bcrypt.js |
 | **Payment Gateway** | [Midtrans Snap API](https://midtrans.com/) (Sandbox & Production) |
@@ -173,16 +182,32 @@ Untuk mempelajari cetak biru arsitektur sistem secara menyeluruh, silakan baca b
 
 ```text
 src/
-├── app/                  # Next.js App Router (Halaman, Layout, dan API Handlers)
+├── app/                  # Next.js App Router (Halaman, Layout, Error Boundaries, dan API Handlers)
 │   ├── actions/          # Server Actions untuk mutasi data profil & preferensi
 │   ├── admin/            # Portal Administrator (/admin) dengan subkomponen tab & modal
 │   ├── api/              # RESTful API Route Handlers (auth, bookings, host, payment, cron)
-│   ├── checkout/         # Alur pembayaran Midtrans Snap di sisi klien
+│   ├── bookings/         # Halaman E-Voucher resmi (/bookings/[id]/voucher) & tiket cetak
+│   ├── checkout/         # Alur pembayaran Midtrans Snap & verifikasi aktif di sisi klien
 │   ├── dashboard/        # Dasbor pengguna untuk pemantauan perjalanan & payout host
 │   ├── profile/          # Pengaturan profil, privasi UU PDP, kontak darurat, & billing
-│   └── properties/       # Halaman listing, pembuatan kamar baru (/new), dan edit
-├── components/           # Komponen UI global (Calendar dwibulan, Dialog, Badge status)
-├── lib/                  # Logika bisnis inti (settings.ts, date-standards.ts, notifications.ts)
+│   ├── properties/       # Halaman listing, pembuatan kamar (/new), dan detail ([id])
+│   │   └── [id]/         # Detail properti + subkomponen tanggal, contextual error & not-found
+│   ├── error.tsx         # Root error boundary (penanganan crash aplikasi umum)
+│   ├── global-error.tsx  # Root layout fatal error boundary (fallback crash HTML)
+│   ├── not-found.tsx     # Halaman 404 global dengan navigasi pemulihan
+│   ├── layout.tsx        # Root layout (ThemeProvider, ToastProvider, Navbar, Footer)
+│   └── page.tsx          # Homepage marketplace & eksplorasi akomodasi
+├── components/           # Komponen UI global
+│   ├── bookings/         # Modal pembatalan pesanan & pelaporan sengketa
+│   ├── calendar/         # Kalender dwibulan, kalkulator fleksibilitas, guest counter
+│   ├── properties/       # Form pendaftaran akomodasi & upload galeri
+│   └── ui/               # Primitif desain sistem (ConfirmDialog, Toast, EmptyState, Button, Badge)
+├── lib/                  # Logika bisnis inti & utilitas
+│   ├── dictionaries/     # Kamus lokalisasi simetris ID & EN (421 keys)
+│   ├── date-standards.ts # Standarisasi Operasional WIB (UTC+7)
+│   ├── file-validation.ts# Pre-upload client validation (MIME & size guard)
+│   ├── settings.ts       # Kalkulator finansial & system settings resolver
+│   └── notifications.ts  # Integrasi email transaksional Resend
 ├── middleware.ts         # Edge Middleware pengamanan rute portal dan API admin
 └── types/                # Definisi kontrak tipe TypeScript terpusat
 ```
@@ -198,8 +223,9 @@ Sistem menerapkan arsitektur keamanan berlapis yang telah melalui audit menyelur
    - Password hash bcrypt, NIK KTP, URL berkas identitas fisik, dan nomor kontak darurat pribadi terisolasi di sisi server dan tidak pernah bocor ke klien browser.
    - Hak Akses Subjek Data: Fitur ekspor berkas JSON data riwayat akun lengkap via `/api/user/export-data`.
 
-2. **Pengerasan Upload Berkas (Server-Side RAM & MIME Guard):**
-   - Validasi ketat MIME type (`image/jpeg`, `image/png`, `image/webp`), menolak SVG/HTML/berkas eksekutabel (HTTP 400).
+2. **Pengerasan Upload Berkas Berlapis (Defense-in-Depth):**
+   - Validasi sisi klien (`src/lib/file-validation.ts`): Menolak berkas non-gambar atau ukuran > 5 MB langsung di peramban sebelum transmisi jaringan dimulai.
+   - Validasi ketat sisi server: Memeriksa ulang MIME type (`image/jpeg`, `image/png`, `image/webp`), menolak SVG/HTML/berkas eksekutabel (HTTP 400).
    - Batas ukuran berkas 5 MB dievaluasi *sebelum* alokasi buffer RAM untuk mencegah crash OOM dan serangan Denial of Service (HTTP 413 Payload Too Large).
    - Isolasi folder Cloudinary terpisah untuk `properties`, `avatars`, `kyc`, dan `refunds`.
 
@@ -224,6 +250,10 @@ Sistem menerapkan arsitektur keamanan berlapis yang telah melalui audit menyelur
 7. **Fail-Safe Secrets & Cron Security:**
    - Seluruh kredensial (Cloudinary, Midtrans) murni dibaca dari environment variables tanpa fallback string dummy/live key di source code.
    - Endpoint otomatisasi `/api/cron/release-escrow` diwajibkan menyertakan header `Authorization: Bearer ${CRON_SECRET}` (HTTP 401 Unauthorized jika tidak valid).
+
+8. **Sanitasi Error & Proteksi Informasi Internal (Zero Stack Leak):**
+   - Error Boundaries App Router (`error.tsx`, `global-error.tsx`, `properties/[id]/error.tsx`) mengisolasi kegagalan komponen tanpa mengekspos *stack trace*, path file internal, atau payload query ke pengguna publik.
+   - Hanya menyajikan identifier insiden acak (`error.digest` / Incident ID) yang aman dibagikan pengguna untuk korelasi dengan log server internal.
 
 ---
 

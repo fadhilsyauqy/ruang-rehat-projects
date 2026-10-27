@@ -14,7 +14,8 @@ Dokumen ini merupakan cetak biru teknis (*technical architecture blueprint*) res
 | **Runtime & Bahasa** | Node.js + TypeScript (Strict) | `Node v20+` / `TS 5.x` | Menjamin *type-safety* end-to-end tanpa toleransi `any`. |
 | **Library UI & Render** | React & React DOM | `19.2.8` | React Server Actions, Transition, Suspense, Optimistic Hooks. |
 | **Styling & Styling Engine** | Tailwind CSS + tw-animate-css | `4.x` | Utility-first styling dengan PostCSS engine v4 dan Dark/Light mode support via `next-themes`. |
-| **Komponen UI Primitif** | Radix UI / Base UI / Lucide | `@base-ui/react`, `lucide-react` | Dialog, Dropdown, Popover, Card, Iconography ramah aksesibilitas (WAI-ARIA). |
+| **Komponen UI Primitif** | Radix UI / Base UI / Lucide | `@base-ui/react`, `lucide-react` | Dialog, ConfirmDialog, Dropdown, Popover, Card, Iconography ramah aksesibilitas (WAI-ARIA). |
+| **Notifikasi & Dialog Asinkronus** | Toast Provider & Confirm Context | Internal Engine (`src/components/ui/`) | Notifikasi non-blocking (Success/Error/Warning/Info) & dialog konfirmasi modal berbasis Promise. |
 | **Database & ORM** | PostgreSQL + Prisma ORM | `@prisma/client 5.22.0` | Skema relasional yang kuat, *pessimistic row locking* (`FOR UPDATE`), transaksi atomik (`$transaction`). |
 | **Autentikasi & Sesi** | Auth.js (NextAuth.js v5 beta) | `5.0.0-beta.32` | Sesi berbasis JWT, Credentials Provider (Bcrypt), Google OAuth 2.0, Role-Based Access Control. |
 | **Payment Gateway** | Midtrans Snap API | `midtrans-client 1.4.3` | Pembayaran multichannel (QRIS, VA Bank Transfer, Kartu Kredit) dengan verifikasi signature SHA-512. |
@@ -35,7 +36,7 @@ airbnb-projects/
 │   └── schema.prisma              # Definisi skema database, tabel, relasi, indeks, dan enum
 ├── public/                        # Aset statis, ikon kategori, logo platform
 └── src/
-    ├── app/                       # Next.js App Router (Halaman, Layout, dan API Handlers)
+    ├── app/                       # Next.js App Router (Halaman, Layout, Error Boundaries, dan API Handlers)
     │   ├── actions/               # Server Actions (Mutasi preferensi, profil, billing, keamanan)
     │   │   └── preferences.ts
     │   ├── admin/                 # Portal Dasbor Administrator (/admin)
@@ -60,25 +61,34 @@ airbnb-projects/
     │   │   ├── user/              # Ekspor data pribadi (Hak Subjek Data UU PDP)
     │   │   └── webhooks/          # Webhook penerima notifikasi resmi Midtrans
     │   ├── bookings/[id]/voucher/ # Halaman E-Voucher resmi & cetak tiket reservasi (VoucherClient)
-    │   ├── checkout/[id]/         # Halaman pembayaran tamu (Integrasi Midtrans Snap CheckoutClient)
+    │   ├── checkout/[id]/         # Halaman pembayaran tamu (Integrasi Midtrans Snap CheckoutClient & On-Demand Sync)
     │   ├── dashboard/             # Portal Dasbor Pengguna (Guest & Host)
     │   │   └── components/        # Komponen modular: TripCard, BankAccountForm, PayoutBalanceCards
     │   ├── profile/               # Manajemen Profil, Privasi UU PDP, Preferensi, & Penagihan Bisnis
     │   │   └── components/        # Dekomposisi per tab: PersonalInfo, Security, Privacy, Hosting
     │   ├── properties/            # Listing properti, pembuatan properti baru (/new), dan edit
-    │   │   └── [id]/components/  # Subkomponen modular: DatePicker, GuestPicker, PriceBreakdown
+    │   │   └── [id]/              # Detail properti + subkomponen modular (BookingDateInputs, PriceBreakdown)
+    │   │       ├── error.tsx      # Contextual Error Boundary halaman detail properti
+    │   │       └── not-found.tsx  # Contextual 404 halaman properti dengan saran destinasi alternatif
     │   ├── signin/                # Form autentikasi terpadu (Credentials & OAuth)
-    │   ├── layout.tsx             # Root layout: ThemeProvider, Navbar, Footer, Skrip Midtrans Snap
+    │   ├── error.tsx              # Root Error Boundary (penanganan crash level aplikasi dengan recovery reset)
+    │   ├── global-error.tsx       # Catch-all fatal Error Boundary (pengganti root HTML jika layout gagal)
+    │   ├── not-found.tsx          # Global 404 Not Found Page dengan navigasi kembali ke beranda
+    │   ├── layout.tsx             # Root layout: ThemeProvider, ToastProvider, Navbar, Footer, Skrip Midtrans
     │   └── page.tsx               # Homepage marketplace: Banner pencarian, filter kategori, kartu listing
     ├── components/                # Komponen UI Global yang dapat digunakan kembali
     │   ├── bookings/              # Modal pembatalan pesanan & pelaporan sengketa
     │   ├── calendar/              # Kalender dwibulan, kalkulator fleksibilitas tanggal, guest counter
     │   ├── properties/            # Form pendaftaran akomodasi bertahap & upload galeri
-    │   └── ui/                    # Primitif desain sistem (Button, Card, Dialog, Badge status, Dropdown)
+    │   └── ui/                    # Primitif desain sistem (ConfirmDialog, Toast, EmptyState, Button, Card, Badge)
     ├── lib/                       # Modul Inti & Utilitas Logika Bisnis
     │   ├── constants.ts           # Nilai default sistem, batas durasi, toleransi waktu
     │   ├── date-standards.ts      # Standarisasi Operasional WIB (UTC+7), jam check-in/out resmi
-    │   ├── dictionary.ts          # Sistem lokalisasi dwibahasa (ID / EN)
+    │   ├── dictionaries/          # Kamus lokalisasi simetris ID & EN (421 keys terpadu)
+    │   │   ├── id.ts
+    │   │   └── en.ts
+    │   ├── dictionary.ts          # Provider konteks dan loader lokalisasi dwibahasa
+    │   ├── file-validation.ts     # Pre-upload client validation (MIME type & size guard < 5MB)
     │   ├── format.ts              # Format mata uang IDR/USD, angka desimal, format string
     │   ├── notifications.ts       # Integrasi email transaksional Resend
     │   ├── prisma.ts              # Global singleton client Prisma
@@ -847,3 +857,146 @@ Tabel berikut mencantumkan variabel konfigurasi yang dibutuhkan oleh aplikasi (t
 | `RESEND_API_KEY` | **Wajib** | API key Resend untuk pengiriman email transaksional resmi. |
 | `EMAIL_FROM` | Opsional | Identitas pengirim email resmi (Default: `Ruang Rehat <onboarding@resend.dev>`). |
 | `CRON_SECRET` | **Wajib** | Token otorisasi `Bearer` yang wajib dikonfigurasi untuk melindungi endpoint otomatisasi `/api/cron/release-escrow`. |
+
+---
+
+## 9. Arsitektur Frontend Resilience & Error Handling
+
+Platform Ruang Rehat menerapkan arsitektur ketahanan frontend (*Frontend Resilience Architecture*) yang dirancang untuk mencegah kegagalan fatal pada peramban pengguna, menjaga ketersediaan navigasi, menjamin integritas transaksi, dan mengeliminasi pengalaman pengguna yang memblokir alur (*blocking dialogs*).
+
+### 9.1 Hierarki Error Boundaries & Sanitasi Crash
+
+Next.js App Router memanfaatkan mekanisme isolasi kegagalan bertingkat dengan pemulihan reaktif:
+
+```mermaid
+graph TD
+    RootCrash[Fatal Crash di Root Layout / HTML] -->|Ditangkap oleh| GlobalError[src/app/global-error.tsx<br/>Menggantikan html dan body]
+    GlobalError -->|Aksi Pemulihan| ResetGlobal[Tombol Refresh / Muat Ulang Halaman]
+
+    AppCrash[Komponen Error di Halaman Umum] -->|Ditangkap oleh| RootAppError[src/app/error.tsx<br/>Berada di dalam Root Layout]
+    RootAppError -->|Aksi Pemulihan| ResetApp[Tombol Coba Lagi reset() / Kembali ke Beranda]
+
+    PropertyCrash[Crash Detail Properti / Dynamic Fetch] -->|Ditangkap oleh| PropertyError[src/app/properties/[id]/error.tsx<br/>Isolasi Kontekstual Halaman]
+    PropertyError -->|Aksi Pemulihan| ResetProperty[Tombol Coba Lagi / Jelajahi Properti Lain]
+
+    NotFound404[Rute Tidak Ditemukan / notFound()] -->|Di-render oleh| GlobalNotFound[src/app/not-found.tsx]
+    NotFoundProp[ID Properti Tidak Valid / Terhapus] -->|Di-render oleh| PropNotFound[src/app/properties/[id]/not-found.tsx<br/>Rekomendasi Destinasi Populer]
+```
+
+#### Sanitasi Galat & Pencegahan Kebocoran Informasi (Zero-Leak Policy):
+1. **Pencegahan Paparan Stack Trace:** Pada lingkungan produksi, komponen error boundary tidak pernah menampilkan *stack trace*, nama berkas internal, baris kode, atau pesan error mentah database/ORM ke pengguna akhir.
+2. **Korelasi Insiden Melalui `error.digest`:** Setiap galat yang ditangkap App Router secara otomatis menghasilkan pengenal unik (*Incident Hash ID*) bernama `digest` (misal: `digest: "3920184712"`). Kode ini ditampilkan kepada pengguna sebagai nomor referensi tiket bantuan yang dapat dicocokkan secara presisi oleh tim teknis pada log server/observability.
+
+---
+
+### 9.2 Sistem Dialog Non-Blocking & Anti-Double Submission
+
+Untuk memenuhi standar kegunaan (*usability*) modern dan kepatuhan aksesibilitas web (WAI-ARIA), aplikasi mengeliminasi seluruh panggilan native `window.alert()` dan `window.confirm()` yang bersifat *thread-blocking*.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Pengguna / Tamu
+    participant UI as Komponen Klien
+    participant Confirm as ConfirmDialog (Base UI)
+    participant Toast as ToastProvider (Reaktif)
+    participant API as Route Handler / Server Action
+
+    User->>UI: Klik Aksi Kritis (misal: Batalkan Booking)
+    UI->>Confirm: confirm({ title, message, confirmText, variant: 'danger' })
+    Confirm-->>User: Tampilkan Modal Dialog Asinkronus (Non-blocking)
+    alt Pengguna Membatalkan Modal
+        User->>Confirm: Klik 'Batal' / Tekan Escape
+        Confirm-->>UI: Resolve Promise (false)
+        Note over UI: Operasi dihentikan tanpa mutasi
+    else Pengguna Mengonfirmasi
+        User->>Confirm: Klik 'Konfirmasi'
+        Confirm-->>UI: Resolve Promise (true)
+        Note over UI: Aktifkan loading = true<br/>Kunci seluruh tombol (disabled: true)
+        UI->>API: Kirim Request Mutasi (HTTP POST/PUT/DELETE)
+        API-->>UI: Respon Berhasil / Gagal
+        Note over UI: Matikan loading = false<br/>Buka kunci tombol
+        UI->>Toast: showToast(message, variant: 'success' | 'error')
+        Toast-->>User: Animasi Banner Toast Reaktif (Auto-dismiss 4-5 detik)
+    end
+```
+
+#### Komponen Utama Arsitektur Dialog:
+- **`ToastProvider` (`src/components/ui/toast.tsx`):** Menyelenggarakan antrean notifikasi global berbasis React Context. Mendukung 4 varian semantik (`success`, `error`, `warning`, `info`) dengan penghitungan mundur *auto-dismiss* otomatis, tombol tutup manual, dan pembacaan ramah screen-reader (`aria-live="polite"`).
+- **`ConfirmDialog` (`src/components/ui/ConfirmDialog.tsx`):** Dialog modal asinkronus berbasis `@base-ui/react` yang membungkus alur persetujuan menjadi Promise JavaScript murni (`const confirmed = await confirm(...)`). Mendukung varian `danger` (merah) untuk aksi destruktif dan `primary` (aksen) untuk aksi reguler.
+- **Proteksi In-Flight Action (Anti-Double Click):** Seluruh tombol pemicu mutasi data dibekali *disabled guard* dan *spinner loading* selama operasi asinkronus aktif, memitigasi risiko panggilan API ganda (*duplicate dispatch*).
+
+---
+
+### 9.3 Arsitektur Validasi Sisi Klien Berlapis (Defense-in-Depth)
+
+Validasi input di platform Ruang Rehat dirancang secara berjenjang (*layered defense*) agar perlindungan terjadi sedekat mungkin dengan pengguna tanpa mengabaikan verifikasi ketat di sisi server.
+
+#### A. Sinergi Validasi Berkas Unggahan:
+1. **Lapisan 1 — Pemeriksaan Sisi Klien (`src/lib/file-validation.ts`):**
+   - Fungsi `validateImageFile(file)` dieksekusi seketika saat event `onChange` pada elemen `<input type="file" />`.
+   - Mengevaluasi MIME type (`image/jpeg`, `image/png`, `image/webp`) dan ambang batas ukuran berkas ($5\,\text{MB} = 5 \times 1024 \times 1024\,\text{byte}$).
+   - Jika berkas tidak valid, proses dibatalkan di peramban dan menampilkan error toast lokal, mencegah transmisi data melalui jaringan.
+2. **Lapisan 2 — Pemeriksaan Sisi Server (`/api/upload/route.ts`):**
+   - Route handler memeriksa ulang ukuran buffer multipart sebelum alokasi memori RAM untuk mencegah eksploitasi *Out-of-Memory* (OOM).
+   - Validasi *Magic Bytes* / Header biner berkas sebelum dikirimkan ke Cloudinary SDK dengan upload preset yang diisolasi per domain (`properties`, `avatars`, `kyc`, `refunds`).
+
+#### B. Validasi Kalender & Input Tanggal Manual:
+- Komponen `BookingDateInputs.tsx` menyediakan dua mode interaksi: pemilihan visual melalui kalender dwi-bulan atau pengetikan langsung (*manual typing*).
+- **Auto-Masking Pengetikan:** Input otomatis diformat dengan *mask* `DD/MM/YYYY` saat angka diketik oleh pengguna.
+- **Validasi Presisi WIB (UTC+7):** Memeriksa validitas tanggal riil (termasuk tahun kabisat), mencegah tanggal di masa lalu relatif terhadap waktu operasional Indonesia Barat (WIB), serta memverifikasi bahwa rentang `checkIn` s/d `checkOut` tidak menabrak slot tanggal yang telah dipesan oleh tamu lain atau diblokir oleh host.
+
+---
+
+### 9.4 Toleransi Transaksi Midtrans Snap (Anti-Hanging Payment Flow)
+
+Proses pembayaran pihak ketiga melalui Midtrans Snap memiliki berbagai kemungkinan *edge case* di sisi pengguna (misal: koneksi internet terputus, pengguna menutup popup secara tiba-tiba, atau delay pengiriman webhook dari server Midtrans).
+
+```mermaid
+stateDiagram-v2
+    [*] --> InisiasiSnap: Klik Bayar Sekarang
+    InisiasiSnap --> PopupSnap: snap.pay(snapToken)
+
+    state PopupSnap {
+        [*] --> MenungguInteraksi
+        MenungguInteraksi --> CallbackSuccess: Transaksi Berhasil (onSuccess)
+        MenungguInteraksi --> CallbackPending: Menunggu Pembayaran (onPending)
+        MenungguInteraksi --> CallbackError: Transaksi Ditolak (onError)
+        MenungguInteraksi --> CallbackClose: Popup Ditutup Manual (onClose)
+    }
+
+    CallbackSuccess --> SyncVerification: Trigger /api/payment/verify-status
+    CallbackPending --> TampilkanInstruksi: Tampilkan Instruksi VA/QRIS & Status Pending
+    CallbackError --> ToastError: Tampilkan Error & Buka Kunci Pilihan Pembayaran
+    CallbackClose --> TampilkanTombolSync: Aktifkan Tombol 'Periksa Status Pembayaran'
+
+    TampilkanTombolSync --> ManualCheck: Tamu Klik Verifikasi Manual
+    ManualCheck --> SyncVerification: Request /api/payment/verify-status
+    SyncVerification --> SelesaiPaid: Midtrans Mengonfirmasi Settlement -> Redirect E-Voucher
+    SyncVerification --> TetapPending: Belum Dibayar -> Tampilkan Informasi Terkini
+```
+
+- **Callback Resilient Handling:** Menangani secara eksplisit 4 callback Snap (`onSuccess`, `onPending`, `onError`, `onClose`) untuk memperbarui status antarmuka pengguna tanpa menimbulkan efek *hanging* atau *freeze*.
+- **Tombol Sinkronisasi Manual (*On-Demand Sync*):** Jika tamu menutup jendela Snap setelah menyelesaikan transfer di aplikasi perbankan/m-banking, antarmuka menyediakan tombol manual "Periksa Status Pembayaran". Tombol ini langsung menghubungi `/api/payment/verify-status` untuk melakukan verifikasi aktif ke API Midtrans tanpa bergantung 100% pada webhook server-to-server.
+
+---
+
+### 9.5 Sistem Lokalisasi Simetris (Dual-Language Dictionary)
+
+Aplikasi mengadopsi pola lokalisasi berbasis kamus statis TypeScript (*Zero External i18n Dependency*) dengan pemetaan tipe yang ketat (*Strict Type-Level Equality*).
+
+```text
+src/lib/dictionaries/
+├── id.ts   # Definisi kamus primer (Bahasa Indonesia) - 421 translation keys
+└── en.ts   # Definisi kamus sekunder (English) - 421 translation keys
+```
+
+#### Prinsip Rekayasa Lokalisasi:
+1. **100% Symmetric Mapping:** Tipe kamus bahasa Inggris didefinisikan secara langsung dari struktur kamus bahasa Indonesia:
+   ```typescript
+   // src/lib/dictionaries/en.ts
+   import { id } from './id';
+   export const en: typeof id = { ... };
+   ```
+   Pendekatan ini memberlakukan *compile-time type checking*. Jika terdapat kunci terjemahan baru yang ditambahkan ke `id.ts` namun belum diisi di `en.ts`, TypeScript compiler (`tsc --noEmit`) akan memunculkan error *missing property*.
+2. **Zero Undefined Values:** Seluruh teks antarmuka, pesan validasi, nama tombol, status reservasi, dan pesan toast dijamin memiliki nilai string valid dalam kedua bahasa, mengeliminasi galat tampilan `undefined` di sisi pengguna.
