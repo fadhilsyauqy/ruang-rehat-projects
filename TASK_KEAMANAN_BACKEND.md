@@ -17,7 +17,7 @@ Setiap task disusun secara berurutan (*phased implementation*) dengan kriteria p
 | **Fase 5** | Integritas Escrow, Atomic Payout, & Batasan Finansial Resolusi Sengketa | `COMPLETED` | 5 Task |
 | **Fase 6** | Otorisasi Ketat Server-Side (RBAC), Anti-IDOR, & Mass-Assignment Guard | `COMPLETED` | 3 Task |
 | **Fase 7** | Kepatuhan UU PDP No. 27/2022 & Eliminasi Data Leak pada RSC Payload | `COMPLETED` | 3 Task |
-| **Fase 8** | Pengerasan Upload File (MIME Validation, Size Limit, & Sanitasi Folder) | `PENDING` | 3 Task |
+| **Fase 8** | Pengerasan Upload File (MIME Validation, Size Limit, & Sanitasi Folder) | `COMPLETED` | 3 Task |
 
 ---
 
@@ -228,13 +228,13 @@ Mencegah pengunggahan malware/skrip XSS (seperti `.html` atau `.svg`), mencegah 
 - `src/app/api/kyc/submit/route.ts`
 
 ### Checklist Task:
-- [ ] **Task 8.1: Validasi MIME Type Sisi Server**
+- [x] **Task 8.1: Validasi MIME Type Sisi Server**
   - Validasi bahwa `file.type` wajib merupakan gambar yang diizinkan: `['image/jpeg', 'image/png', 'image/webp']`.
   - Tolak file berformat `.svg`, `.html`, `.exe`, `.pdf`, atau skrip eksekutabel lainnya dengan status `400 Bad Request`.
-- [ ] **Task 8.2: Batasi Ukuran File Maksimal (Max File Size Guard)**
+- [x] **Task 8.2: Batasi Ukuran File Maksimal (Max File Size Guard)**
   - Periksa ukuran file sebelum mengalokasikan memori buffer (`file.size <= 5 * 1024 * 1024` atau maksimal 5 MB).
   - Tolak file yang melebihi batas ukuran dengan status `413 Payload Too Large` untuk melindungi RAM server dari crash OOM (*Out of Memory*).
-- [ ] **Task 8.3: Sanitasi dan Kategorisasi Folder Penyimpanan**
+- [x] **Task 8.3: Sanitasi dan Kategorisasi Folder Penyimpanan**
   - Terima parameter `folder` opsional yang divalidasi ketat (`properties`, `avatars`, `kyc`, `refunds`).
   - Pastikan dokumen identitas KTP dan bukti transfer refund diunggah ke folder terisolasi yang sesuai dan tidak tercampur dalam galeri properti umum.
 

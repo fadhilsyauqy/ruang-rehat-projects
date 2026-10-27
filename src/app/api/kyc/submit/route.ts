@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
+import { v2 as cloudinary } from "cloudinary"
+
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 
 export async function POST(req: Request) {
   try {
@@ -9,12 +14,98 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const body = await req.json()
-    const { idCardUrl, idCardNumber, legalName, phoneNumber, address } = body
+    const contentType = req.headers.get("content-type") || ""
+    let idCardUrl = ""
+    let idCardNumber = ""
+    let legalName = ""
+    let phoneNumber = ""
+    let address = ""
 
-    if (!idCardUrl) {
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await req.formData()
+      const file = formData.get("file") as File | null
+      idCardNumber = (formData.get("idCardNumber") as string) || ""
+      legalName = (formData.get("legalName") as string) || ""
+      phoneNumber = (formData.get("phoneNumber") as string) || ""
+      address = (formData.get("address") as string) || ""
+      idCardUrl = (formData.get("idCardUrl") as string) || ""
+
+      if (file && typeof file === "object" && typeof file.arrayBuffer === "function" && file.size > 0) {
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+          return NextResponse.json(
+            { error: "Format file dokumen tidak didukung. Hanya gambar bertipe JPEG, PNG, atau WebP yang diperbolehkan." },
+            { status: 400 }
+          )
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+          return NextResponse.json(
+            { error: "Ukuran file dokumen KTP melebihi batas maksimal 5 MB." },
+            { status: 413 }
+          )
+        }
+
+        const cloudName = process.env.CLOUDINARY_CLOUD_NAME
+        const apiKey = process.env.CLOUDINARY_API_KEY
+        const apiSecret = process.env.CLOUDINARY_API_SECRET
+
+        if (!cloudName || !apiKey || !apiSecret) {
+          return NextResponse.json(
+            { error: "Layanan upload file sedang tidak dapat digunakan (konfigurasi server tidak lengkap)." },
+            { status: 500 }
+          )
+        }
+
+        cloudinary.config({
+          cloud_name: cloudName,
+          api_key: apiKey,
+          api_secret: apiSecret,
+        })
+
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+
+        const uploadResult = await new Promise<{ secure_url?: string }>((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "ruang-rehat-kyc" },
+            (error, result) => {
+              if (error) reject(error)
+              else if (result) resolve(result)
+              else reject(new Error("Cloudinary upload returned no result"))
+            }
+          )
+          uploadStream.end(buffer)
+        })
+
+        idCardUrl = uploadResult.secure_url || ""
+      }
+    } else {
+      const body = await req.json()
+      idCardUrl = body.idCardUrl
+      idCardNumber = body.idCardNumber
+      legalName = body.legalName
+      phoneNumber = body.phoneNumber
+      address = body.address
+    }
+
+    if (!idCardUrl || String(idCardUrl).trim().length === 0) {
       return NextResponse.json(
         { error: "Foto dokumen KTP / Paspor wajib diunggah." },
+        { status: 400 }
+      )
+    }
+
+    try {
+      const parsedUrl = new URL(String(idCardUrl).trim())
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return NextResponse.json(
+          { error: "URL foto dokumen identitas tidak valid." },
+          { status: 400 }
+        )
+      }
+    } catch {
+      return NextResponse.json(
+        { error: "URL foto dokumen identitas tidak valid." },
         { status: 400 }
       )
     }
@@ -26,7 +117,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const updateData: any = {
+    const updateData: Prisma.UserUpdateInput = {
       idCardUrl: String(idCardUrl).trim(),
       idCardNumber: String(idCardNumber).trim(),
       kycStatus: "PENDING",
@@ -65,10 +156,11 @@ export async function POST(req: Request) {
       message: "Pengajuan verifikasi identitas (KYC) Anda berhasil dikirim dan sedang ditinjau oleh Admin.",
       user: updatedUser
     })
-  } catch (error: any) {
-    console.error("KYC Submit Error:", error)
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error("KYC Submit Error:", err)
     return NextResponse.json(
-      { error: error.message || "Gagal mengajukan verifikasi KYC" },
+      { error: err.message || "Gagal mengajukan verifikasi KYC" },
       { status: 500 }
     )
   }

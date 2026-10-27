@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Pencil, X, Upload } from "lucide-react"
 
+import type { Dictionary } from "@/lib/dictionary"
+
 interface PersonalPhotoCardProps {
   image: string
   setImage: (url: string) => void
@@ -14,7 +16,7 @@ interface PersonalPhotoCardProps {
   onSave: () => void
   loading: boolean
   currentLang: string
-  t: any
+  t: Partial<Dictionary>
 }
 
 export default function PersonalPhotoCard({
@@ -35,10 +37,30 @@ export default function PersonalPhotoCard({
     const file = e.target.files?.[0]
     if (!file) return
 
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      alert(
+        currentLang === "en"
+          ? "Only JPEG, PNG, or WebP images are allowed."
+          : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan."
+      )
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert(
+        currentLang === "en"
+          ? "File size exceeds 5 MB limit."
+          : "Ukuran file melebihi batas maksimal 5 MB."
+      )
+      return
+    }
+
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append("file", file)
+      formData.append("folder", "avatars")
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -51,8 +73,9 @@ export default function PersonalPhotoCard({
       }
 
       setImage(data.url)
-    } catch (err: any) {
-      alert(err.message || (currentLang === "en" ? "Failed to upload image. Please check file format." : "Gagal mengunggah gambar. Pastikan format file sesuai."))
+    } catch (err: unknown) {
+      const error = err as Error
+      alert(error.message || (currentLang === "en" ? "Failed to upload image. Please check file format." : "Gagal mengunggah gambar. Pastikan format file sesuai."))
     } finally {
       setUploading(false)
     }

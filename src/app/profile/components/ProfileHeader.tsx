@@ -16,11 +16,12 @@ import {
 import { updateProfile } from "@/app/actions/preferences"
 import ProfileActivityMetrics from "./ProfileActivityMetrics"
 import type { ProfileUser, AdminStats } from "../types"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface ProfileHeaderProps {
   user: ProfileUser
   currentLang: string
-  t: any
+  t: Partial<Dictionary>
   adminStats?: AdminStats
   image: string
   setImage: (url: string) => void
@@ -59,10 +60,30 @@ export default function ProfileHeader({
     const file = e.target.files?.[0]
     if (!file) return
 
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      alert(
+        currentLang === "en"
+          ? "Only JPEG, PNG, or WebP images are allowed."
+          : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan."
+      )
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert(
+        currentLang === "en"
+          ? "File size exceeds 5 MB limit."
+          : "Ukuran file melebihi batas maksimal 5 MB."
+      )
+      return
+    }
+
     setUploadingImage(true)
     try {
       const formData = new FormData()
       formData.append("file", file)
+      formData.append("folder", "avatars")
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -80,8 +101,9 @@ export default function ProfileHeader({
 
       setImage(data.url)
       router.refresh()
-    } catch (err: any) {
-      alert(err.message || (currentLang === "en" ? "Failed to upload image. Please check file format." : "Gagal mengunggah gambar. Pastikan format file sesuai."))
+    } catch (err: unknown) {
+      const error = err as Error
+      alert(error.message || (currentLang === "en" ? "Failed to upload image. Please check file format." : "Gagal mengunggah gambar. Pastikan format file sesuai."))
     } finally {
       setUploadingImage(false)
     }

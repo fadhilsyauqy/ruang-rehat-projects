@@ -16,13 +16,29 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
     const files = e.target.files
     if (!files || files.length === 0) return
 
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+    const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
+
     setIsUploading(true)
     const newUrls: string[] = []
 
     try {
       for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          alert(`File "${file.name}" tidak didukung. Hanya JPEG, PNG, dan WebP yang diizinkan.`)
+          continue
+        }
+
+        if (file.size > MAX_SIZE) {
+          alert(`File "${file.name}" melebihi batas ukuran maksimal 5 MB.`)
+          continue
+        }
+
         const formData = new FormData()
-        formData.append("file", files[i])
+        formData.append("file", file)
+        formData.append("folder", "properties")
 
         const res = await fetch("/api/upload", {
           method: "POST",
@@ -38,9 +54,12 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         newUrls.push(data.url)
       }
 
-      onChange([...value, ...newUrls])
-    } catch (error: any) {
-      alert("Gagal mengunggah gambar: " + error.message)
+      if (newUrls.length > 0) {
+        onChange([...value, ...newUrls])
+      }
+    } catch (error: unknown) {
+      const err = error as Error
+      alert("Gagal mengunggah gambar: " + err.message)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) {
@@ -88,7 +107,7 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
           ref={fileInputRef} 
           onChange={handleUpload} 
           multiple 
-          accept="image/*" 
+          accept="image/jpeg,image/png,image/webp" 
           className="hidden" 
         />
         {isUploading ? (

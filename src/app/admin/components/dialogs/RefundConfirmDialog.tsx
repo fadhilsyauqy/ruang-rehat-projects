@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react"
-import { Banknote } from "lucide-react"
+import React, { useState, useRef } from "react"
+import { Banknote, Upload, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -34,14 +34,57 @@ export default function RefundConfirmDialog({
   currentCurrency = "IDR",
 }: RefundConfirmDialogProps) {
   const [proofUrl, setProofUrl] = useState("")
+  const [prevBookingId, setPrevBookingId] = useState(booking?.id)
+  const [uploadingProof, setUploadingProof] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (booking) {
-      setProofUrl("")
-    }
-  }, [booking])
+  if (booking?.id !== prevBookingId) {
+    setPrevBookingId(booking?.id)
+    setProofUrl("")
+  }
 
   if (!booking) return null
+
+  const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      alert("Hanya gambar dengan format JPEG, PNG, atau WebP yang diperbolehkan.")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran file bukti transfer melebihi batas maksimal 5 MB.")
+      return
+    }
+
+    setUploadingProof(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", "refunds")
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mengunggah bukti transfer")
+      }
+
+      setProofUrl(data.url)
+    } catch (err: unknown) {
+      const error = err as Error
+      alert(error.message || "Gagal mengunggah bukti transfer")
+    } finally {
+      setUploadingProof(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,13 +140,37 @@ export default function RefundConfirmDialog({
             <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
               Link Bukti Transfer / Resi BI-FAST (Opsional):
             </label>
-            <Input
-              type="url"
-              placeholder="https://... (Link foto bukti transfer m-Banking / BI-FAST)"
-              value={proofUrl}
-              onChange={(e) => setProofUrl(e.target.value)}
-              className="rounded-xl text-xs bg-white dark:bg-gray-900"
-            />
+            <div className="flex gap-2">
+              <Input
+                type="url"
+                placeholder="https://... (Link foto bukti transfer m-Banking / BI-FAST)"
+                value={proofUrl}
+                onChange={(e) => setProofUrl(e.target.value)}
+                className="rounded-xl text-xs bg-white dark:bg-gray-900 flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading || uploadingProof}
+                className="rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1.5 h-9"
+              >
+                {uploadingProof ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Upload className="w-3.5 h-3.5" />
+                )}
+                <span>{uploadingProof ? "Mengunggah..." : "Upload Resi"}</span>
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleUploadProof}
+                className="hidden"
+              />
+            </div>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2.5">

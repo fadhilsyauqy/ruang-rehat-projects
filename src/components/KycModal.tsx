@@ -37,7 +37,7 @@ interface KycModalProps {
     kycRejectReason?: string | null
   }
   currentLang?: string
-  triggerButton?: React.ReactNode
+  triggerButton?: React.ReactElement
   onSuccess?: () => void
 }
 
@@ -67,12 +67,32 @@ export default function KycModal({
     const file = e.target.files?.[0]
     if (!file) return
 
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setErrorMessage(
+        currentLang === "en"
+          ? "Only JPEG, PNG, or WebP images are allowed."
+          : "Format file tidak didukung. Hanya JPEG, PNG, atau WebP yang diperbolehkan."
+      )
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage(
+        currentLang === "en"
+          ? "File size exceeds 5 MB limit."
+          : "Ukuran file melebihi batas maksimal 5 MB."
+      )
+      return
+    }
+
     setUploadingImage(true)
     setErrorMessage("")
 
     try {
       const formData = new FormData()
       formData.append("file", file)
+      formData.append("folder", "kyc")
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -83,8 +103,9 @@ export default function KycModal({
       if (!res.ok) throw new Error(data.error || "Gagal mengunggah foto KTP")
 
       setIdCardUrl(data.url)
-    } catch (err: any) {
-      setErrorMessage(err.message || "Gagal mengunggah dokumen KTP")
+    } catch (err: unknown) {
+      const error = err as Error
+      setErrorMessage(error.message || "Gagal mengunggah dokumen KTP")
     } finally {
       setUploadingImage(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -135,8 +156,9 @@ export default function KycModal({
         if (onSuccess) onSuccess()
         router.refresh()
       }, 1500)
-    } catch (err: any) {
-      setErrorMessage(err.message || "Terjadi kesalahan saat menyimpan")
+    } catch (err: unknown) {
+      const error = err as Error
+      setErrorMessage(error.message || "Terjadi kesalahan saat menyimpan")
     } finally {
       setSubmitting(false)
     }
@@ -144,7 +166,7 @@ export default function KycModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {triggerButton && <DialogTrigger render={triggerButton as any} />}
+      {triggerButton && <DialogTrigger render={triggerButton} />}
       <DialogContent className="max-w-lg p-6 sm:p-8 rounded-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-2 pb-2">
           <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-1">
@@ -241,7 +263,7 @@ export default function KycModal({
             <input 
               ref={fileInputRef}
               type="file" 
-              accept="image/*" 
+              accept="image/jpeg,image/png,image/webp" 
               className="hidden" 
               onChange={handleFileUpload} 
             />
