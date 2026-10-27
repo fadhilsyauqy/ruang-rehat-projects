@@ -4,6 +4,42 @@ Dokumen ini merupakan cetak biru teknis (*technical architecture blueprint*) res
 
 ---
 
+## 📑 Daftar Isi
+
+1. [Tech Stack & Peta Struktur Direktori](#1-tech-stack--peta-struktur-direktori)
+   - [1.1 Tech Stack Inti](#11-tech-stack-inti)
+   - [1.2 Peta Struktur Direktori & Hasil Modularisasi](#12-peta-struktur-direktori--hasil-modularisasi)
+2. [Entity Relationship Diagram (ERD)](#2-entity-relationship-diagram-erd)
+3. [State Machine Diagram (Siklus Hidup Status)](#3-state-machine-diagram-siklus-hidup-status)
+   - [3.1 Siklus Hidup Reservasi (Booking Lifecycle)](#31-siklus-hidup-reservasi-booking-lifecycle)
+   - [3.2 Siklus Hidup Pembayaran Midtrans Snap](#32-siklus-hidup-pembayaran-midtrans-snap)
+   - [3.3 Siklus Hidup Escrow & Sengketa (Dispute Management)](#33-siklus-hidup-escrow--sengketa-dispute-management)
+   - [3.4 Siklus Hidup Penarikan Dana Host (Payout Lifecycle)](#34-siklus-hidup-penarikan-dana-host-payout-lifecycle)
+   - [3.5 Siklus Hidup Audit Verifikasi Identitas (KYC Lifecycle)](#35-siklus-hidup-audit-verifikasi-identitas-kyc-lifecycle)
+4. [Sequence Diagram - Alur Kritis](#4-sequence-diagram---alur-kritis)
+   - [4.1 Alur Inisiasi Pemesanan & Pessimistic Row Locking](#41-alur-inisiasi-pemesanan--pessimistic-row-locking)
+   - [4.2 Alur Webhook Notifikasi Midtrans & Timing-Safe Verification](#42-alur-webhook-notifikasi-midtrans--timing-safe-verification)
+   - [4.3 Alur Resolusi Sengketa Admin & Terminal Refund Payout](#43-alur-resolusi-sengketa-admin--terminal-refund-payout)
+   - [4.4 Alur Penarikan Dana Host (Payout) & Mutasi Saldo Atomik](#44-alur-penarikan-dana-host-payout--mutasi-saldo-atomik)
+   - [4.5 Alur Otomatisasi Pelepasan Escrow via Cron Worker](#45-alur-otomatisasi-pelepasan-escrow-via-cron-worker)
+5. [Matriks Hak Akses (RBAC) & Keamanan Rute](#5-matriks-hak-akses-rbac--keamanan-rute)
+6. [Katalog API Routes & Server Actions](#6-katalog-api-routes--server-actions)
+7. [Aturan Bisnis & Kalkulasi Finansial](#7-aturan-bisnis--kalkulasi-finansial)
+   - [7.1 Formula Perhitungan Pemesanan (Booking Financials)](#71-formula-perhitungan-pemesanan-booking-financials)
+   - [7.2 Standar Waktu Operasional (WIB / UTC+7)](#72-standar-waktu-operasional-zona-waktu-indonesia-barat---wib--utc7)
+   - [7.3 Kebijakan Pembatalan & Hak Pengembalian Dana (Refund)](#73-kebijakan-pembatalan--hak-pengembalian-dana-refund)
+8. [Integrasi Eksternal & Konfigurasi Environment](#8-integrasi-eksternal--konfigurasi-environment)
+   - [8.1 Daftar Layanan Pihak Ketiga](#81-daftar-layanan-pihak-ketiga)
+   - [8.2 Daftar Variabel Lingkungan (.env)](#82-daftar-variabel-lingkungan-env)
+9. [Arsitektur Frontend Resilience & Error Handling](#9-arsitektur-frontend-resilience--error-handling)
+   - [9.1 Hierarki Error Boundaries & Sanitasi Crash](#91-hierarki-error-boundaries--sanitasi-crash)
+   - [9.2 Sistem Dialog Non-Blocking & Anti-Double Submission](#92-sistem-dialog-non-blocking--anti-double-submission)
+   - [9.3 Arsitektur Validasi Sisi Klien Berlapis (Defense-in-Depth)](#93-arsitektur-validasi-sisi-klien-berlapis-defense-in-depth)
+   - [9.4 Toleransi Transaksi Midtrans Snap (Anti-Hanging Payment Flow)](#94-toleransi-transaksi-midtrans-snap-anti-hanging-payment-flow)
+   - [9.5 Sistem Lokalisasi Simetris (Dual-Language Dictionary)](#95-sistem-lokalisasi-simetris-dual-language-dictionary)
+
+---
+
 ## 1. Tech Stack & Peta Struktur Direktori
 
 ### 1.1 Tech Stack Inti

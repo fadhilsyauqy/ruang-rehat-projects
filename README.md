@@ -175,6 +175,8 @@ Untuk mempelajari cetak biru arsitektur sistem secara menyeluruh, silakan baca b
 - **Matriks Hak Akses (RBAC):** Tabel granular izin fitur untuk Guest, Host Unverified, Host Verified, dan Administrator.
 - **Katalog API & Server Actions:** Dokumentasi 30+ Route Handlers RESTful dan fungsi mutasi data.
 - **Formula Finansial & Kebijakan Bisnis:** Perhitungan matematis sewa, *cleaning fee*, komisi split-fee, dan aturan pembatalan.
+- **Integrasi Eksternal & Variabel Lingkungan:** Topologi layanan pihak ketiga dan daftar konfigurasi `.env`.
+- **Frontend Resilience & Error Handling:** Hierarki Error Boundaries, dialog non-blocking, validasi bertingkat, dan lokalisasi dwibahasa.
 
 ---
 
