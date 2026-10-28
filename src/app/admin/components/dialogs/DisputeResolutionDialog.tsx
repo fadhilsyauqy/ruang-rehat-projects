@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { Scale, Loader2 } from "lucide-react"
 import {
   Dialog,
@@ -47,19 +47,19 @@ export default function DisputeResolutionDialog({
   const [adminNotes, setAdminNotes] = useState("")
   const [refundApprovedIdr, setRefundApprovedIdr] = useState<number>(0)
   const [payoutApprovedIdr, setPayoutApprovedIdr] = useState<number>(0)
+  const [prevDisputeId, setPrevDisputeId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (dispute) {
-      setResolution("RESOLVED_RELEASE_TO_HOST")
-      setAdminNotes("")
-      const total =
-        (dispute.booking?.totalPriceIdr ?? 0) > 0
-          ? (dispute.booking?.totalPriceIdr ?? 0)
-          : Math.round((dispute.booking?.totalPrice || 0) * 18051)
-      setRefundApprovedIdr(Math.round(total / 2))
-      setPayoutApprovedIdr(total - Math.round(total / 2))
-    }
-  }, [dispute])
+  if (dispute && dispute.id !== prevDisputeId) {
+    setPrevDisputeId(dispute.id)
+    setResolution("RESOLVED_RELEASE_TO_HOST")
+    setAdminNotes("")
+    const total =
+      (dispute.booking?.totalPriceIdr ?? 0) > 0
+        ? (dispute.booking?.totalPriceIdr ?? 0)
+        : Math.round((dispute.booking?.totalPrice || 0) * 18051)
+    setRefundApprovedIdr(Math.round(total / 2))
+    setPayoutApprovedIdr(total - Math.round(total / 2))
+  }
 
   if (!dispute) return null
 

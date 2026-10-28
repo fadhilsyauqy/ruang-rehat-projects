@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { KycStatus, Prisma } from "@prisma/client"
 
 export async function PATCH(
   req: Request,
@@ -8,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth()
-    if (!session || !session.user || (session.user as any).role !== "ADMIN") {
+    if (!session || !session.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 })
     }
 
@@ -41,8 +42,8 @@ export async function PATCH(
         throw new Error("Tidak dapat menyetujui KYC: Dokumen identitas (KTP/Paspor) belum diunggah.")
       }
 
-      const updateData: any = {
-        kycStatus: status as any
+      const updateData: Prisma.UserUpdateInput = {
+        kycStatus: status as KycStatus
       }
 
       if (status === "REJECTED") {
@@ -98,8 +99,9 @@ export async function PATCH(
       user: updatedUser,
       notes
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error("Admin KYC update error:", error)
-    return NextResponse.json({ error: error.message || "Failed to update KYC status" }, { status: 400 })
+    const errorMessage = error instanceof Error ? error.message : "Failed to update KYC status"
+    return NextResponse.json({ error: errorMessage }, { status: 400 })
   }
 }

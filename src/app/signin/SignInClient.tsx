@@ -5,10 +5,11 @@ import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Mail, Lock, User, ArrowRight, ShieldCheck, Eye, EyeOff } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface SignInClientProps {
   currentLang?: string
-  t?: any
+  t?: Partial<Dictionary>
 }
 
 export default function SignInClient({
@@ -40,8 +41,10 @@ export default function SignInClient({
     try {
       const savedEmail = localStorage.getItem("ruangrehat_remember_email")
       if (savedEmail) {
-        setEmail(savedEmail)
-        setRememberMe(true)
+        setTimeout(() => {
+          setEmail(savedEmail)
+          setRememberMe(true)
+        }, 0)
       }
     } catch {
       // Abaikan jika localStorage tidak diizinkan di browser
@@ -82,8 +85,9 @@ export default function SignInClient({
         router.push(callbackUrl)
         router.refresh()
       }
-    } catch (err: any) {
-      setError(err?.message || (currentLang === "en" ? "An error occurred during sign in." : "Terjadi kesalahan saat masuk."))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      setError(msg || (currentLang === "en" ? "An error occurred during sign in." : "Terjadi kesalahan saat masuk."))
     } finally {
       setLoading(false)
     }
@@ -147,8 +151,9 @@ export default function SignInClient({
         router.push(callbackUrl)
         router.refresh()
       }
-    } catch (err: any) {
-      setError(err?.message || (currentLang === "en" ? "An error occurred during registration." : "Terjadi kesalahan saat pendaftaran."))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      setError(msg || (currentLang === "en" ? "An error occurred during registration." : "Terjadi kesalahan saat pendaftaran."))
     } finally {
       setLoading(false)
     }

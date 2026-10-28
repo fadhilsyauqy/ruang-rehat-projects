@@ -21,14 +21,15 @@ export default async function AdminPage({
     redirect("/signin?callbackUrl=/admin")
   }
 
-  if ((session.user as any).role !== "ADMIN") {
+  if (session.user.role !== "ADMIN") {
     redirect("/dashboard")
   }
 
   const resolvedSearch = searchParams ? await searchParams : {}
-  const validTabs = ["overview", "kyc", "payouts", "disputes", "refunds", "bookings", "users", "settings"]
-  const initialTab = (resolvedSearch.tab && validTabs.includes(resolvedSearch.tab))
-    ? (resolvedSearch.tab as any)
+  const validTabs = ["overview", "kyc", "payouts", "disputes", "refunds", "bookings", "users", "settings"] as const
+  type AdminTab = (typeof validTabs)[number]
+  const initialTab: AdminTab = (resolvedSearch.tab && (validTabs as readonly string[]).includes(resolvedSearch.tab))
+    ? (resolvedSearch.tab as AdminTab)
     : "overview"
 
   const cookieStore = await cookies()

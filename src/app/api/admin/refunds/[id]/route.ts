@@ -11,7 +11,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
-  const userRole = (session?.user as any)?.role
+  const userRole = session?.user?.role
 
   if (!session || !session.user || userRole !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized. Akses khusus Admin." }, { status: 403 })

@@ -12,7 +12,7 @@ import { formatPrice } from "@/lib/format"
 export default async function WishlistsPage() {
   const session = await auth()
   
-  if (!session || !session.user || (session.user as any).role !== 'GUEST') {
+  if (!session || !session.user || session.user.role !== 'GUEST') {
     redirect("/dashboard")
   }
 

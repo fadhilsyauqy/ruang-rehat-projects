@@ -17,12 +17,45 @@ import {
 } from "lucide-react"
 import { formatPrice } from "@/lib/format"
 import { calculateStayNights, toCheckInDateTimeWIB, toCheckOutDateTimeWIB } from "@/lib/date-standards"
+import type { Dictionary } from "@/lib/dictionary"
+import type { Prisma } from "@prisma/client"
+
+export type VoucherBooking = Prisma.BookingGetPayload<{
+  include: {
+    property: {
+      include: {
+        host: {
+          select: {
+            id: true;
+            name: true;
+            preferredName: true;
+            email: true;
+            phoneNumber: true;
+            image: true;
+          };
+        };
+      };
+    };
+    guest: {
+      select: {
+        id: true;
+        name: true;
+        preferredName: true;
+        email: true;
+        phoneNumber: true;
+        billingTaxId: true;
+        billingCompanyName: true;
+        billingAddress: true;
+      };
+    };
+  };
+}>;
 
 interface VoucherClientProps {
-  booking: any
+  booking: VoucherBooking
   currentCurrency: string
   currentLang?: string
-  t: any
+  t: Dictionary
 }
 
 export default function VoucherClient({

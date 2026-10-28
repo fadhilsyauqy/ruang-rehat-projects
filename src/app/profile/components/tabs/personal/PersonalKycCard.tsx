@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { BadgeCheck, ShieldCheck, Clock, ShieldAlert } from "lucide-react"
 import type { ProfileUser } from "../../../types"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface PersonalKycCardProps {
   user: ProfileUser
   isAdmin: boolean
   isHost: boolean
   currentLang: string
-  t: any
+  t: Dictionary
   joinDate: string
   onOpenKycModal: () => void
 }

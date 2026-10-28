@@ -13,11 +13,12 @@ import ResidentialAddressCard from "./ResidentialAddressCard"
 import EmergencyContactCard from "./EmergencyContactCard"
 import type { ProfileUser } from "../../../types"
 import { toast } from "@/components/ui/use-toast"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface PersonalInfoTabProps {
   user: ProfileUser
   currentLang: string
-  t: any
+  t: Dictionary
   image: string
   setImage: (url: string) => void
   onOpenKycModal: () => void
@@ -86,11 +87,12 @@ export default function PersonalInfoTab({
       })
       if (onProfileSuccess) onProfileSuccess()
       router.refresh()
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
       toast({
         variant: "destructive",
         title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
-        description: err.message || (currentLang === "en" ? "Failed to update profile" : "Gagal memperbarui profil"),
+        description: msg || (currentLang === "en" ? "Failed to update profile" : "Gagal memperbarui profil"),
       })
     } finally {
       setLoadingProfile(false)

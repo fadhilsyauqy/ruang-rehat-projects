@@ -5,6 +5,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import bcrypt from "bcryptjs"
+import { Prisma } from "@prisma/client"
 
 export async function updateProfile(formData: FormData) {
   const session = await auth()
@@ -148,7 +149,7 @@ export async function updatePrivacySettings(data: {
     throw new Error("Unauthorized")
   }
 
-  const updateData: any = {}
+  const updateData: Prisma.UserUpdateInput = {}
   if (data.hideLastNameReview !== undefined) updateData.hideLastNameReview = Boolean(data.hideLastNameReview)
   if (data.hideSearchEngines !== undefined) updateData.hideSearchEngines = Boolean(data.hideSearchEngines)
   if (data.readReceipts !== undefined) updateData.readReceipts = Boolean(data.readReceipts)
@@ -174,7 +175,7 @@ export async function updateNotificationSettings(data: {
     throw new Error("Unauthorized")
   }
 
-  const updateData: any = {}
+  const updateData: Prisma.UserUpdateInput = {}
   if (data.notifyTripReminder !== undefined) updateData.notifyTripReminder = Boolean(data.notifyTripReminder)
   if (data.notifyPromoMarketing !== undefined) updateData.notifyPromoMarketing = Boolean(data.notifyPromoMarketing)
   if (data.notifyHostBooking !== undefined) updateData.notifyHostBooking = Boolean(data.notifyHostBooking)

@@ -23,7 +23,7 @@ import { validateImageFile } from "@/lib/file-validation"
 interface ProfileHeaderProps {
   user: ProfileUser
   currentLang: string
-  t: Partial<Dictionary>
+  t: Dictionary
   adminStats?: AdminStats
   image: string
   setImage: (url: string) => void

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Search, ShieldCheck, CheckCircle2, Landmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -23,15 +23,16 @@ export default function PayoutsTab({
 }: PayoutsTabProps) {
   const router = useRouter()
   const [payoutsList, setPayoutsList] = useState<AdminPayoutItem[]>(initialPayouts)
+  const [prevInitialPayouts, setPrevInitialPayouts] = useState(initialPayouts)
+  if (initialPayouts !== prevInitialPayouts) {
+    setPrevInitialPayouts(initialPayouts)
+    setPayoutsList(initialPayouts)
+  }
   const [userSearch, setUserSearch] = useState("")
   const [payoutStatusFilter, setPayoutStatusFilter] = useState("ALL")
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [selectedPayoutForApproval, setSelectedPayoutForApproval] =
     useState<AdminPayoutItem | null>(null)
-
-  useEffect(() => {
-    setPayoutsList(initialPayouts)
-  }, [initialPayouts])
 
   const handleUpdatePayout = async (
     payoutId: string,

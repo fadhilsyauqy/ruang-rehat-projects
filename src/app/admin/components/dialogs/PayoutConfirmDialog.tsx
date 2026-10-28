@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { CheckCircle2, Building2, CreditCard, Loader2 } from "lucide-react"
 import {
   Dialog,
@@ -37,14 +37,14 @@ export default function PayoutConfirmDialog({
   const [referenceNumber, setReferenceNumber] = useState("")
   const [notes, setNotes] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
+  const [prevPayoutId, setPrevPayoutId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (payout) {
-      setReferenceNumber("")
-      setNotes("")
-      setErrorMsg("")
-    }
-  }, [payout])
+  if (payout && payout.id !== prevPayoutId) {
+    setPrevPayoutId(payout.id)
+    setReferenceNumber("")
+    setNotes("")
+    setErrorMsg("")
+  }
 
   if (!payout) return null
 

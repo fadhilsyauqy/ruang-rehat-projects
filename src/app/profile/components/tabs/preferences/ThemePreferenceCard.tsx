@@ -3,13 +3,14 @@
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Pencil, X } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface ThemePreferenceCardProps {
   isOpen: boolean
   onToggle: () => void
   onClose: () => void
   currentLang: string
-  t: any
+  t: Dictionary
 }
 
 export default function ThemePreferenceCard({

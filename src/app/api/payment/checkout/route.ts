@@ -9,8 +9,16 @@ import {
   isPastDateWIB
 } from "@/lib/date-standards"
 import { getSystemSettings, calculateBookingFinancials } from "@/lib/settings"
-// @ts-ignore
 import midtransClient from "midtrans-client"
+
+class CheckoutError extends Error {
+  statusCode: number
+  constructor(message: string, statusCode = 400) {
+    super(message)
+    this.name = "CheckoutError"
+    this.statusCode = statusCode
+  }
+}
 
 function getSnapClient() {
   const serverKey = process.env.MIDTRANS_SERVER_KEY
@@ -118,17 +126,13 @@ export async function POST(req: Request) {
 
       if (properties.length === 0) throw new Error("Property not found")
       if (properties[0].hostId === session.user!.id) {
-        const err: any = new Error("Anda tidak dapat memesan properti milik Anda sendiri.")
-        err.statusCode = 400
-        throw err
+        throw new CheckoutError("Anda tidak dapat memesan properti milik Anda sendiri.", 400)
       }
       
       const prop = properties[0]
 
       if (guestsCount > (prop.maxGuests || 1)) {
-        const err: any = new Error(`Jumlah tamu (${guestsCount}) melebihi batas kapasitas maksimal properti (${prop.maxGuests || 1} orang).`)
-        err.statusCode = 400
-        throw err
+        throw new CheckoutError(`Jumlah tamu (${guestsCount}) melebihi batas kapasitas maksimal properti (${prop.maxGuests || 1} orang).`, 400)
       }
 
       const propertyTitle = prop.title
@@ -143,9 +147,7 @@ export async function POST(req: Request) {
         ? Math.min(prop.maxStayNights, settings.maxStayNights) 
         : settings.maxStayNights
       if (totalNights < 1 || totalNights > effectiveMaxStay) {
-        const err: any = new Error(`Durasi menginap maksimal adalah ${effectiveMaxStay} malam per transaksi`)
-        err.statusCode = 400
-        throw err
+        throw new CheckoutError(`Durasi menginap maksimal adalah ${effectiveMaxStay} malam per transaksi`, 400)
       }
 
       // Otomatis batalkan booking PENDING yang sudah melewati batas waktu (60 menit)
@@ -320,25 +322,26 @@ export async function POST(req: Request) {
       expiresAt: newBooking.expiresAt
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Checkout Error Log:", error);
-    if (error.statusCode) {
+    if (error instanceof CheckoutError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    if (error.message === "Dates are no longer available" || error.message?.includes("Rentang tanggal")) {
-      return NextResponse.json({ error: error.message }, { status: 409 })
+    const message = error instanceof Error ? error.message : "Checkout failed"
+    if (message === "Dates are no longer available" || message.includes("Rentang tanggal")) {
+      return NextResponse.json({ error: message }, { status: 409 })
     }
-    if (error.message === "Property not found") {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+    if (message === "Property not found") {
+      return NextResponse.json({ error: message }, { status: 404 })
     }
     if (
-      error.message?.includes("melebihi") || 
-      error.message?.includes("maksimal") || 
-      error.message?.includes("minimal") ||
-      error.message?.includes("milik Anda sendiri")
+      message.includes("melebihi") || 
+      message.includes("maksimal") || 
+      message.includes("minimal") ||
+      message.includes("milik Anda sendiri")
     ) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: message }, { status: 400 })
     }
-    return NextResponse.json({ error: error.message || "Checkout failed" }, { status: 500 })
+    return NextResponse.json({ error: message || "Checkout failed" }, { status: 500 })
   }
 }

@@ -28,12 +28,12 @@ export default function KycRejectDialog({
   t,
 }: KycRejectDialogProps) {
   const [rejectReason, setRejectReason] = React.useState("")
+  const [prevUserId, setPrevUserId] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    if (user) {
-      setRejectReason("")
-    }
-  }, [user])
+  if (user && user.id !== prevUserId) {
+    setPrevUserId(user.id)
+    setRejectReason("")
+  }
 
   if (!user) return null
 

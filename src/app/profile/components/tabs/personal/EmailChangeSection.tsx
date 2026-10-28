@@ -99,9 +99,10 @@ export default function EmailChangeSection({
           router.refresh()
         }, 1500)
       }
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
       setEmailError(
-        err.message ||
+        msg ||
           (currentLang === "en" ? "Failed to update email address" : "Gagal memperbarui alamat email")
       )
     } finally {

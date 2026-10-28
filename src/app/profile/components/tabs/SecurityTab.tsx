@@ -12,11 +12,12 @@ import {
 } from "lucide-react"
 import { changePassword } from "@/app/actions/preferences"
 import type { ProfileUser } from "../../types"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface SecurityTabProps {
   user: ProfileUser
   currentLang: string
-  t: any
+  t: Dictionary
 }
 
 export default function SecurityTab({
@@ -79,8 +80,9 @@ export default function SecurityTab({
       setConfirmPassword("")
       setEditingSection(null)
       setTimeout(() => setPwSuccess(false), 4000)
-    } catch (err: any) {
-      setPwError(err.message || "Gagal mengganti kata sandi")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      setPwError(msg || "Gagal mengganti kata sandi")
     } finally {
       setPwLoading(false)
     }

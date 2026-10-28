@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { Role } from "@prisma/client"
 
 export async function PATCH(
   req: Request,
@@ -8,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth()
-    if (!session || !session.user || (session.user as any).role !== "ADMIN") {
+    if (!session || !session.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 })
     }
 
@@ -29,7 +30,7 @@ export async function PATCH(
 
     const updatedUser = await prisma.user.update({
       where: { id: resolvedParams.id },
-      data: { role: role as any },
+      data: { role: role as Role },
       select: {
         id: true,
         name: true,
@@ -43,8 +44,9 @@ export async function PATCH(
       message: `Role untuk ${updatedUser.name || updatedUser.email} berhasil diubah menjadi ${role}`,
       user: updatedUser
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error("Admin Role update error:", error)
-    return NextResponse.json({ error: error.message || "Failed to update role" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Failed to update role"
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

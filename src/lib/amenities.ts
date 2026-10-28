@@ -13,13 +13,15 @@ import {
   Bath
 } from "lucide-react"
 
+import type { LucideIcon } from "lucide-react"
+
 export interface AmenityDefinition {
   id: string
   label: {
     id: string
     en: string
   }
-  icon: any
+  icon: LucideIcon
 }
 
 export const ALL_AMENITIES: AmenityDefinition[] = [

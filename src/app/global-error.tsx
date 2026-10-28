@@ -47,13 +47,13 @@ export default function GlobalError({
               <RotateCw className="w-4 h-4" />
               <span>Coba Lagi</span>
             </button>
-            <a
+            <Link
               href="/"
               className="w-full sm:w-auto border border-gray-300 hover:bg-gray-100 text-gray-800 rounded-xl text-xs font-semibold px-4 py-2.5 inline-flex items-center justify-center gap-2 cursor-pointer transition-colors"
             >
               <Home className="w-4 h-4" />
               <span>Beranda</span>
-            </a>
+            </Link>
           </div>
         </div>
       </body>

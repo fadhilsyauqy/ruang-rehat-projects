@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { Prisma, RefundStatus } from "@prisma/client"
 
 /**
  * GET: Ambil daftar seluruh antrean pengembalian dana (Refunds)
@@ -9,7 +10,7 @@ import { auth } from "@/auth"
 export async function GET(req: Request) {
   try {
     const session = await auth()
-    const userRole = (session?.user as any)?.role
+    const userRole = session?.user?.role
 
     if (!session || !session.user || userRole !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized. Akses khusus Admin." }, { status: 403 })
@@ -18,12 +19,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get("status") // 'PENDING_ADMIN_TRANSFER' | 'COMPLETED' | 'ALL'
 
-    let whereClause: any = {
-      refundStatus: { not: "NONE" }
-    }
-
-    if (status && status !== "ALL") {
-      whereClause.refundStatus = status
+    const whereClause: Prisma.BookingWhereInput = {
+      refundStatus: status && status !== "ALL" ? (status as RefundStatus) : { not: "NONE" }
     }
 
     const refunds = await prisma.booking.findMany({

@@ -12,6 +12,7 @@ import {
   ShieldCheck
 } from "lucide-react"
 import type { ProfileUser, AdminStats } from "../types"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface ProfileActivityMetricsProps {
   user: ProfileUser
@@ -19,7 +20,7 @@ interface ProfileActivityMetricsProps {
   isHost: boolean
   adminStats?: AdminStats
   currentLang: string
-  t: any
+  t: Dictionary
 }
 
 export default function ProfileActivityMetrics({

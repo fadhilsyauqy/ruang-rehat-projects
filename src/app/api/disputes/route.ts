@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { toCheckInDateTimeWIB, toEscrowReleaseDateTimeWIB } from "@/lib/date-standards"
+import { Prisma, DisputeStatus } from "@prisma/client"
 
 /**
  * GET: Ambil daftar sengketa
@@ -15,15 +16,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userRole = (session.user as any).role
+    const userRole = session.user.role
     const { searchParams } = new URL(req.url)
     const statusParam = searchParams.get("status")
 
-    let whereClause: any = {}
+    const whereClause: Prisma.DisputeWhereInput = {}
 
     if (userRole === "ADMIN") {
       if (statusParam) {
-        whereClause.status = statusParam
+        whereClause.status = statusParam as DisputeStatus
       }
     } else {
       whereClause.OR = [
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
         { booking: { property: { hostId: session.user.id } } }
       ]
       if (statusParam) {
-        whereClause.status = statusParam
+        whereClause.status = statusParam as DisputeStatus
       }
     }
 

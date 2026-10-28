@@ -42,9 +42,11 @@ export async function sendBookingConfirmationEmail(
   endDate: Date | string
 ) {
   if (!resendApiKey || resendApiKey.startsWith("re_dummy")) {
-    console.log(
-      `[Email Mock] Konfirmasi pesanan untuk tamu disimulasikan ke: ${email}`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[Email Mock] Konfirmasi pesanan untuk tamu disimulasikan ke: ${email}`
+      );
+    }
     return;
   }
 
@@ -90,9 +92,11 @@ export async function sendHostNewBookingEmail(
   params: HostNewBookingEmailParams
 ) {
   if (!resendApiKey || resendApiKey.startsWith("re_dummy")) {
-    console.log(
-      `[Email Mock] Notifikasi pesanan baru host disimulasikan ke: ${params.hostEmail} (${params.propertyName})`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[Email Mock] Notifikasi pesanan baru host disimulasikan ke: ${params.hostEmail} (${params.propertyName})`
+      );
+    }
     return;
   }
 
@@ -186,9 +190,11 @@ export async function sendHostPayoutApprovedEmail(
   params: HostPayoutApprovedEmailParams
 ) {
   if (!resendApiKey || resendApiKey.startsWith("re_dummy")) {
-    console.log(
-      `[Email Mock] Konfirmasi pencairan dana host disimulasikan ke: ${params.hostEmail} (${params.amountIdr} IDR)`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[Email Mock] Konfirmasi pencairan dana host disimulasikan ke: ${params.hostEmail} (${params.amountIdr} IDR)`
+      );
+    }
     return;
   }
 

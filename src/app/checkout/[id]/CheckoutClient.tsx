@@ -10,6 +10,12 @@ import { calculateStayNights, formatWibDate } from "@/lib/date-standards"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
+import type { Dictionary } from "@/lib/dictionary"
+import type { Prisma } from "@prisma/client"
+
+export type CheckoutBooking = Prisma.BookingGetPayload<{
+  include: { property: true }
+}>
 
 export default function CheckoutClient({ 
   booking, 
@@ -18,21 +24,22 @@ export default function CheckoutClient({
   currentLang = 'id',
   t
 }: { 
-  booking: any, 
+  booking: CheckoutBooking, 
   token: string,
   currentCurrency?: string,
   currentLang?: string,
-  t: any
+  t: Dictionary
 }) {
   const router = useRouter()
   const [isPaid, setIsPaid] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const isInitiallyExpired = 
-    booking.status === 'CANCELLED' || 
-    booking.paymentStatus === 'EXPIRED' ||
-    (booking.expiresAt && new Date(booking.expiresAt).getTime() <= Date.now())
-
-  const [isExpired, setIsExpired] = useState(isInitiallyExpired)
+  const [isExpired, setIsExpired] = useState(() => {
+    return (
+      booking.status === 'CANCELLED' || 
+      booking.paymentStatus === 'EXPIRED' ||
+      (booking.expiresAt ? new Date(booking.expiresAt).getTime() <= Date.now() : false)
+    )
+  })
   const [timeLeft, setTimeLeft] = useState<number>(() => {
     if (!booking.expiresAt) return 3600
     const diff = Math.floor((new Date(booking.expiresAt).getTime() - Date.now()) / 1000)
@@ -102,12 +109,12 @@ export default function CheckoutClient({
 
   useEffect(() => {
     if (isExpired) return
-    let snapInstance: any = null
+    let snapInstance: { hide?: () => void } | null = null
 
     // Inisialisasi Midtrans Snap "Embed" mode (Bukan pop-up)
     const initSnap = () => {
-      if ((window as any).snap && !snapInstance) {
-        snapInstance = (window as any).snap.embed(token, {
+      if (window.snap && !snapInstance) {
+        snapInstance = window.snap.embed(token, {
           embedId: 'snap-container',
           onSuccess: async function () {
             setIsPaid(true)
@@ -160,7 +167,7 @@ export default function CheckoutClient({
       }
     }
 
-    if ((window as any).snap) {
+    if (window.snap) {
       initSnap()
     } else {
       const timer = setTimeout(initSnap, 1000)
@@ -168,9 +175,9 @@ export default function CheckoutClient({
     }
 
     return () => {
-      if ((window as any).snap && typeof (window as any).snap.hide === 'function') {
+      if (window.snap && typeof window.snap.hide === 'function') {
         try {
-          (window as any).snap.hide()
+          window.snap.hide()
         } catch {}
       }
     }
@@ -226,9 +233,9 @@ export default function CheckoutClient({
   }
 
   const diffDays = booking.totalNights || calculateStayNights(booking.startDate, booking.endDate)
-  const nightlyRate = booking.nightlyRateIdr || (booking.nightlyRate ? Math.round(booking.nightlyRate * 18051) : (booking.property.pricePerNight || Math.round((booking.property.price || 0) * 18051)))
-  const cleaningFee = booking.cleaningFeeIdr !== undefined && booking.cleaningFeeIdr > 0 ? booking.cleaningFeeIdr : (booking.cleaningFee ? Math.round(booking.cleaningFee * 18051) : 0)
-  const serviceFee = booking.guestServiceFeeIdr !== undefined && booking.guestServiceFeeIdr > 0 ? booking.guestServiceFeeIdr : (booking.serviceFee ? Math.round(booking.serviceFee * 18051) : Math.round((nightlyRate * diffDays + cleaningFee) * 0.10))
+  const nightlyRate = booking.nightlyRateIdr || (booking.property.pricePerNight || Math.round((booking.property.price || 0) * 18051))
+  const cleaningFee = (booking.cleaningFeeIdr ?? 0) > 0 ? booking.cleaningFeeIdr! : 0
+  const serviceFee = (booking.guestServiceFeeIdr ?? 0) > 0 ? booking.guestServiceFeeIdr! : Math.round((nightlyRate * diffDays + cleaningFee) * 0.10)
   const finalTotalPrice = booking.totalPriceIdr || (booking.totalPrice ? Math.round(booking.totalPrice * 18051) : (nightlyRate * diffDays + cleaningFee + serviceFee))
   const policy = booking.property.cancellationPolicy || "FLEXIBLE"
 

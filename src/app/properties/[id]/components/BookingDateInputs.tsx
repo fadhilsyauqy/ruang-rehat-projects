@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getWibDateString } from "@/lib/date-standards"
@@ -113,13 +113,17 @@ export default function BookingDateInputs({
     checkOutStr ? formatInputDate(checkOutStr, currentLang) : ""
   )
 
-  useEffect(() => {
+  const [prevCheckIn, setPrevCheckIn] = useState({ checkInStr, currentLang })
+  if (prevCheckIn.checkInStr !== checkInStr || prevCheckIn.currentLang !== currentLang) {
+    setPrevCheckIn({ checkInStr, currentLang })
     setRawInputCheckIn(checkInStr ? formatInputDate(checkInStr, currentLang) : "")
-  }, [checkInStr, currentLang])
+  }
 
-  useEffect(() => {
+  const [prevCheckOut, setPrevCheckOut] = useState({ checkOutStr, currentLang })
+  if (prevCheckOut.checkOutStr !== checkOutStr || prevCheckOut.currentLang !== currentLang) {
+    setPrevCheckOut({ checkOutStr, currentLang })
     setRawInputCheckOut(checkOutStr ? formatInputDate(checkOutStr, currentLang) : "")
-  }, [checkOutStr, currentLang])
+  }
 
   const formatRangeHeader = () => {
     if (!dateFrom) {

@@ -57,11 +57,12 @@ export default function NotificationsTab({
         description: successMsg,
       })
       setTimeout(() => setNotifySuccessMsg(""), 3000)
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
       toast({
         variant: "destructive",
         title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
-        description: err.message || (currentLang === "en" ? "Failed to update notification settings" : "Gagal memperbarui pengaturan notifikasi"),
+        description: msg || (currentLang === "en" ? "Failed to update notification settings" : "Gagal memperbarui pengaturan notifikasi"),
       })
     } finally {
       setSavingNotify(false)

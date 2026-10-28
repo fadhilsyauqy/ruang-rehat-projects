@@ -33,7 +33,6 @@ export default function ProfileSidebar({
   currentLang,
   isHost,
   isAdmin,
-  user
 }: ProfileSidebarProps) {
   const sidebarItems = [
     {

@@ -27,7 +27,7 @@ export default async function Dashboard({
   const currentCurrency = cookieStore.get('currency')?.value || 'IDR'
   const t = getDictionary(currentLang)
 
-  const role = (session.user as any).role
+  const role = session.user.role || "GUEST"
 
   // Pemeliharaan otomatis transaksi:
   // 1. Batalkan booking PENDING yang telah melewati waktu expiresAt (60 menit)

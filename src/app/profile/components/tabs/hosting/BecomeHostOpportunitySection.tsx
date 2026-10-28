@@ -2,10 +2,11 @@
 
 import Link from "next/link"
 import { Sparkles, CheckCircle2, Plus, ArrowRight } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface BecomeHostOpportunitySectionProps {
   currentLang: string
-  t: any
+  t: Dictionary
 }
 
 export default function BecomeHostOpportunitySection({

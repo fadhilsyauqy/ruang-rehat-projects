@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { CalendarX, CalendarDays, Calendar, Lock, Unlock, CalendarCheck2 } from "lucide-react"
+import { CalendarX, Calendar, Lock, Unlock, CalendarCheck2 } from "lucide-react"
 import EmptyState from "@/components/ui/EmptyState"
 import BlockDateDialog from "../dialogs/BlockDateDialog"
 import type { Dictionary } from "@/lib/dictionary"

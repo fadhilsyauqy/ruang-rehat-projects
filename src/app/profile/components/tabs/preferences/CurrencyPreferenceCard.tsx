@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Check, Pencil, X } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface CurrencyPreferenceCardProps {
   currency: string
@@ -11,7 +12,7 @@ interface CurrencyPreferenceCardProps {
   onSave: () => void
   loading: boolean
   currentLang: string
-  t: any
+  t: Dictionary
 }
 
 export default function CurrencyPreferenceCard({

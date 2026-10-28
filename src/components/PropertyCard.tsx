@@ -6,24 +6,56 @@ import { Star, ChevronLeft, ChevronRight } from "lucide-react"
 import FavoriteButton from "@/components/FavoriteButton"
 import { formatPrice } from "@/lib/format"
 
+export interface PropertyCardProps {
+  property: {
+    id: string
+    title: string
+    address?: string | null
+    description?: string | null
+    maxGuests?: number | null
+    pricePerNight?: number | null
+    price?: number | null
+    imageUrls?: string[]
+    [key: string]: unknown
+  }
+  currentCurrency?: string
+  isGuest?: boolean
+  isFavorited?: boolean
+  avgRating?: string | null
+  t?: {
+    guestFavorite?: string
+    maxGuestsLabel?: string
+    guests?: string
+    newListing?: string
+    night?: string
+    [key: string]: unknown
+  }
+  cardHref: string
+  isFeatured?: boolean
+  isRecommendation?: boolean
+  disableCarousel?: boolean
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
+}
+
 export default function PropertyCard({ 
   property, 
-  currentCurrency, 
-  isGuest, 
-  isFavorited, 
+  currentCurrency = "IDR", 
+  isGuest = false, 
+  isFavorited = false, 
   avgRating, 
-  t, 
+  t = {}, 
   cardHref,
   isFeatured = false,
   isRecommendation = false,
   disableCarousel = false,
   onMouseEnter,
   onMouseLeave
-}: any) {
+}: PropertyCardProps) {
   const [imgIndex, setImgIndex] = useState(0)
   
   // Provide 3 fallback images if dummy data only has 1, so swipe is testable
-  const baseImages = property.imageUrls?.length > 0 ? property.imageUrls : ['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=400&h=400']
+  const baseImages = property.imageUrls && property.imageUrls.length > 0 ? property.imageUrls : ['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=400&h=400']
   const images = baseImages.length === 1 
     ? [baseImages[0], 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&q=80&w=400&h=400', 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=400&h=400'] 
     : baseImages;
@@ -38,7 +70,7 @@ export default function PropertyCard({
     setImgIndex((prev) => (prev - 1 + images.length) % images.length)
   }
 
-  const ImageCarousel = () => (
+  const carouselElement = (
     <div className="relative w-full h-full overflow-hidden rounded-xl bg-gray-200 group/carousel">
       {isGuest && (
         <FavoriteButton propertyId={property.id} initialIsFavorited={isFavorited} isLoggedIn={true} className="absolute top-3 right-3" />
@@ -70,7 +102,7 @@ export default function PropertyCard({
 
           {/* Dots Indicator */}
           <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
-            {images.map((_: any, idx: number) => (
+            {images.map((_, idx: number) => (
               <div key={idx} className={`rounded-full transition-all ${idx === imgIndex ? 'bg-white w-2 h-2' : 'bg-white/60 w-1.5 h-1.5'}`} />
             ))}
           </div>
@@ -89,7 +121,7 @@ export default function PropertyCard({
         style={{ width: '100%', maxWidth: '875.55px', height: '271px' }}
       >
         <div className="relative h-full shrink-0" style={{ width: '318px' }}>
-          <ImageCarousel />
+          {carouselElement}
         </div>
         <div className="flex flex-col flex-1 py-1 pr-2">
           <div className="flex justify-between items-start">
@@ -139,7 +171,7 @@ export default function PropertyCard({
           className="w-full relative shrink-0 overflow-hidden rounded-xl" 
           style={{ height: isRecommendation ? '315px' : '200px' }}
         >
-          <ImageCarousel />
+          {carouselElement}
         </div>
         <div className="flex justify-between items-start mt-0.5">
           <div className="flex flex-col min-w-0 pr-1 flex-1">

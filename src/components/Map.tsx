@@ -7,16 +7,17 @@ import L from "leaflet";
 import { formatPrice } from "@/lib/format";
 import Link from "next/link";
 import { Star } from "lucide-react";
+import type { Dictionary } from "@/lib/dictionary";
 
 interface Property {
   id: string;
   title: string;
   price?: number | null;
-  pricePerNight?: number;
-  latitude: number;
-  longitude: number;
+  pricePerNight?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   imageUrls?: string[];
-  reviews?: any[];
+  reviews?: Array<{ rating: number }>;
 }
 
 interface MapProps {
@@ -24,7 +25,7 @@ interface MapProps {
   onBoundsChange?: (lat: number, lng: number, radius: number) => void;
   hoveredId?: string | null;
   currentCurrency?: string;
-  t?: any;
+  t?: Partial<Dictionary>;
 }
 
 function MapEvents({ onBoundsChange, properties }: { onBoundsChange?: (lat: number, lng: number, radius: number) => void, properties: Property[] }) {
@@ -42,8 +43,13 @@ function MapEvents({ onBoundsChange, properties }: { onBoundsChange?: (lat: numb
   // Fit bounds to all properties whenever properties change
   useEffect(() => {
     if (properties && properties.length > 0) {
-      const bounds = L.latLngBounds(properties.map(p => [p.latitude, p.longitude]));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      const validCoords = properties
+        .filter((p): p is Property & { latitude: number; longitude: number } => p.latitude != null && p.longitude != null)
+        .map(p => [p.latitude, p.longitude] as [number, number]);
+      if (validCoords.length > 0) {
+        const bounds = L.latLngBounds(validCoords);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      }
     }
   }, [properties, map]);
 
@@ -74,18 +80,20 @@ export default function Map({ properties, onBoundsChange, hoveredId, currentCurr
     });
   };
 
-  const centerLat = properties.length > 0 ? properties[0].latitude : -6.2;
-  const centerLng = properties.length > 0 ? properties[0].longitude : 106.8;
+  const firstValid = properties.find(p => p.latitude != null && p.longitude != null);
+  const centerLat = firstValid?.latitude ?? -6.2;
+  const centerLng = firstValid?.longitude ?? 106.8;
 
   return (
     <MapContainer center={[centerLat, centerLng]} zoom={11} className="w-full h-full z-0">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <MapEvents onBoundsChange={onBoundsChange} properties={properties} />
       {properties.map((p) => {
+        if (p.latitude == null || p.longitude == null) return null;
         const isHovered = hoveredId === p.id;
         
         const avgRating = p.reviews && p.reviews.length > 0 
-          ? (p.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / p.reviews.length).toFixed(2)
+          ? (p.reviews.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / p.reviews.length).toFixed(2)
           : null;
 
         const rawPriceIdr = p.pricePerNight || (p.price ? p.price * 18051 : 0);

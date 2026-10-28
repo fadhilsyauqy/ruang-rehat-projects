@@ -14,13 +14,31 @@ import { Button } from "@/components/ui/button"
 import { formatPrice } from "@/lib/format"
 import { toCheckInDateTimeWIB, formatWibCheckIn } from "@/lib/date-standards"
 import { AlertCircle, Banknote, CalendarX, Info, Loader2 } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
+
+export interface CancelBookingData {
+  id: string
+  startDate: Date | string
+  endDate: Date | string
+  paymentStatus?: string | null
+  totalPrice?: number | null
+  totalPriceIdr?: number | null
+  guestServiceFeeIdr?: number | null
+  refundBankName?: string | null
+  refundAccountNumber?: string | null
+  refundAccountHolder?: string | null
+  property?: {
+    title?: string | null
+    cancellationPolicy?: string | null
+  } | null
+}
 
 interface CancelBookingModalProps {
-  booking: any
-  t: any
+  booking: CancelBookingData
+  t?: Partial<Dictionary>
   currentLang?: string
   currentCurrency?: string
-  trigger?: React.ReactNode
+  trigger?: React.ReactElement
 }
 
 const INDONESIAN_BANKS = [
@@ -56,18 +74,18 @@ export default function CancelBookingModal({
   const router = useRouter()
 
   const isPaid = booking.paymentStatus === "PAID"
-  const totalPriceIdr = booking.totalPriceIdr > 0 
-    ? booking.totalPriceIdr 
+  const totalPriceIdr = (booking.totalPriceIdr ?? 0) > 0 
+    ? booking.totalPriceIdr! 
     : Math.round((booking.totalPrice || 0) * 18051)
 
-  const guestServiceFeeIdr = booking.guestServiceFeeIdr > 0
-    ? booking.guestServiceFeeIdr
+  const guestServiceFeeIdr = (booking.guestServiceFeeIdr ?? 0) > 0
+    ? booking.guestServiceFeeIdr!
     : Math.round(totalPriceIdr * 0.10)
 
   const grossStayIdr = Math.max(0, totalPriceIdr - guestServiceFeeIdr)
 
   // Hitung persentase pengembalian dana berdasarkan jam check-in resmi (14:00 WIB)
-  const now = Date.now()
+  const [now] = useState(() => Date.now())
   const checkInDateTime = toCheckInDateTimeWIB(booking.startDate)
   const checkInTime = checkInDateTime.getTime()
   const hoursUntilCheckIn = (checkInTime - now) / (1000 * 60 * 60)
@@ -146,8 +164,9 @@ export default function CancelBookingModal({
 
       setOpen(false)
       router.refresh()
-    } catch (err: any) {
-      setErrorMsg(err.message || "Terjadi kesalahan saat membatalkan")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      setErrorMsg(msg || "Terjadi kesalahan saat membatalkan")
     } finally {
       setLoading(false)
     }
@@ -156,7 +175,7 @@ export default function CancelBookingModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger render={trigger as any} />
+        <DialogTrigger render={trigger} />
       ) : (
         <DialogTrigger className="w-full text-xs text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 py-2 rounded-xl font-medium transition-colors cursor-pointer">
           {t?.btnCancelOrder || (currentLang === "en" ? "Cancel Reservation" : "Batalkan Pesanan")}

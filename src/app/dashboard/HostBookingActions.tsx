@@ -7,14 +7,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertTriangle, ShieldAlert, RotateCw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
+import type { Dictionary } from "@/lib/dictionary"
+import type { HostIncomingBooking } from "@/types"
 
 export default function HostBookingActions({ 
   booking, 
   t, 
   currentLang = "id" 
 }: { 
-  booking: any, 
-  t: any, 
+  booking: HostIncomingBooking, 
+  t?: Partial<Dictionary>, 
   currentLang?: string 
 }) {
   const [loading, setLoading] = useState(false)
@@ -41,11 +43,12 @@ export default function HostBookingActions({
       if (data.updated) {
         router.refresh()
       }
-    } catch (e: any) {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ""
       toast({
         variant: "destructive",
         title: currentLang === "en" ? "Error Checking Payment" : "Gagal Memeriksa Pembayaran",
-        description: e.message || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran"),
+        description: msg || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran"),
       })
     } finally {
       setSyncing(false)
@@ -71,11 +74,12 @@ export default function HostBookingActions({
       })
       setOpen(false)
       router.refresh()
-    } catch (e: any) {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ""
       toast({
         variant: "destructive",
         title: currentLang === "en" ? "Cancellation Failed" : "Gagal Membatalkan",
-        description: e.message || (currentLang === "en" ? "Failed to cancel booking" : "Gagal membatalkan pesanan"),
+        description: msg || (currentLang === "en" ? "Failed to cancel booking" : "Gagal membatalkan pesanan"),
       })
     } finally {
       setLoading(false)

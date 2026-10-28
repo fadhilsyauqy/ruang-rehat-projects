@@ -15,10 +15,16 @@ import { toEscrowReleaseDateTimeWIB, formatWibDateTime } from "@/lib/date-standa
 import { AlertTriangle, Clock, Info, Loader2, ShieldAlert, X } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 
+export interface ReportDisputeBookingData {
+  id: string
+  startDate: Date | string
+  escrowReleaseAt?: Date | string | null
+}
+
 interface ReportDisputeModalProps {
-  booking: any
+  booking: ReportDisputeBookingData
   currentLang?: string
-  trigger?: React.ReactNode
+  trigger?: React.ReactElement
 }
 
 const DISPUTE_REASONS = [
@@ -44,13 +50,14 @@ export default function ReportDisputeModal({
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([])
 
   const router = useRouter()
+  const [now] = useState(() => Date.now())
 
   // Hitung batas waktu garansi komplain (24 jam sejak check-in resmi 14:00 WIB)
   const deadline = booking.escrowReleaseAt 
     ? new Date(booking.escrowReleaseAt) 
     : toEscrowReleaseDateTimeWIB(booking.startDate)
 
-  const diffMs = deadline.getTime() - Date.now()
+  const diffMs = deadline.getTime() - now
   const remainingHours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)))
   const remainingMinutes = Math.max(0, Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)))
 
@@ -102,8 +109,9 @@ export default function ReportDisputeModal({
 
       setOpen(false)
       router.refresh()
-    } catch (err: any) {
-      setErrorMsg(err.message || "Terjadi kesalahan saat melaporkan sengketa")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      setErrorMsg(msg || "Terjadi kesalahan saat melaporkan sengketa")
     } finally {
       setLoading(false)
     }
@@ -112,7 +120,7 @@ export default function ReportDisputeModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger render={trigger as any} />
+        <DialogTrigger render={trigger} />
       ) : (
         <DialogTrigger className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-bold text-xs transition-colors cursor-pointer">
           <ShieldAlert className="w-3.5 h-3.5" />

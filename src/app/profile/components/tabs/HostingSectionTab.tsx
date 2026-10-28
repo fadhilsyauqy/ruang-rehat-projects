@@ -4,11 +4,12 @@ import AdminHostingSection from "./hosting/AdminHostingSection"
 import HostOperationsSection from "./hosting/HostOperationsSection"
 import BecomeHostOpportunitySection from "./hosting/BecomeHostOpportunitySection"
 import type { ProfileUser, AdminStats } from "../../types"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface HostingSectionTabProps {
   user: ProfileUser
   currentLang: string
-  t: any
+  t: Dictionary
   adminStats?: AdminStats
   hostingTitle: string
 }

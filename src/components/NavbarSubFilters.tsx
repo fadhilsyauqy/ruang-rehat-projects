@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation"
 import SearchSubFilterBar from "./SearchSubFilterBar"
+import type { Dictionary } from "@/lib/dictionary"
 
 export default function NavbarSubFilters({
   currentLang = "id",
@@ -10,7 +11,7 @@ export default function NavbarSubFilters({
 }: {
   currentLang?: string
   currentCurrency?: string
-  t: any
+  t: Dictionary
 }) {
   const searchParams = useSearchParams()
 

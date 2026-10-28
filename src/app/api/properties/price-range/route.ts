@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const location = searchParams.get('location')
 
   try {
-    const where: any = {
+    const where: Prisma.PropertyWhereInput = {
       isPublished: true
     }
     if (location && location.trim()) {

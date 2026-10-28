@@ -83,7 +83,7 @@ export default async function Navbar() {
           <div className="flex items-center gap-4 shrink-0">
             {session ? (
               <div className="flex items-center gap-3">
-                {(session.user as any)?.role === 'ADMIN' && (
+                {session.user?.role === 'ADMIN' && (
                   <Link 
                     href="/admin" 
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors"
@@ -118,7 +118,7 @@ export default async function Navbar() {
                     </Link>
                   </DropdownMenuItem>
 
-                  {(session.user as any)?.role === 'ADMIN' && (
+                  {session.user?.role === 'ADMIN' && (
                     <DropdownMenuItem>
                       <Link href="/admin" className="cursor-pointer flex w-full font-semibold text-purple-600 dark:text-purple-400">
                         <ShieldCheck className="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -127,7 +127,7 @@ export default async function Navbar() {
                     </DropdownMenuItem>
                   )}
 
-                  {session.user && (session.user as any).role === 'HOST' ? (
+                  {session.user?.role === 'HOST' ? (
                     <>
                       <DropdownMenuItem>
                         <Link href="/dashboard" className="cursor-pointer flex w-full">

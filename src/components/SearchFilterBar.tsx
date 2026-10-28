@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -42,13 +42,16 @@ export default function SearchFilterBar({
   const isSearchFocused = whereOpen || datesOpen || guestsOpen
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  const searchParamsStr = searchParams.toString()
+  const [prevParamsStr, setPrevParamsStr] = useState(searchParamsStr)
+  if (searchParamsStr !== prevParamsStr) {
+    setPrevParamsStr(searchParamsStr)
     setLocation(searchParams.get("location") || "")
     setCheckIn(searchParams.get("checkIn") || "")
     setCheckOut(searchParams.get("checkOut") || "")
     const g = parseInt(searchParams.get("guests") || "0", 10)
     if (g > 0 && adults === 0 && children === 0) setAdults(g)
-  }, [searchParams])
+  }
 
   const totalGuests = adults + children
 

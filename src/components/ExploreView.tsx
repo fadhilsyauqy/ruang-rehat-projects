@@ -5,6 +5,24 @@ import { SearchX } from "lucide-react"
 import MapWrapper from "@/components/MapWrapper"
 import PropertyCard from "@/components/PropertyCard"
 import EmptyState from "@/components/ui/EmptyState"
+import type { Session } from "next-auth"
+import type { Dictionary } from "@/lib/dictionary"
+
+export interface ExplorePropertyItem {
+  id: string
+  title: string
+  address: string
+  description?: string | null
+  maxGuests?: number | null
+  price?: number | null
+  pricePerNight?: number | null
+  latitude?: number | null
+  longitude?: number | null
+  imageUrls: string[]
+  favorites?: Array<{ id: string }>
+  reviews?: Array<{ rating: number }>
+  [key: string]: unknown
+}
 
 export default function ExploreView({ 
   properties, 
@@ -14,10 +32,10 @@ export default function ExploreView({
   isSearch = false,
   selectedId
 }: { 
-  properties: any[], 
+  properties: ExplorePropertyItem[], 
   currentCurrency: string, 
-  session: any, 
-  t: any,
+  session: Session | null, 
+  t: Dictionary,
   isSearch?: boolean,
   selectedId?: string,
   currentLang?: string
@@ -49,8 +67,8 @@ export default function ExploreView({
                     property={featuredProperty}
                     currentCurrency={currentCurrency}
                     isGuest={session?.user && session.user.role === 'GUEST'}
-                    isFavorited={featuredProperty.favorites?.length > 0}
-                    avgRating={featuredProperty.reviews?.length > 0 ? (featuredProperty.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / featuredProperty.reviews.length).toFixed(2) : null}
+                    isFavorited={Boolean(featuredProperty.favorites?.length)}
+                    avgRating={featuredProperty.reviews && featuredProperty.reviews.length > 0 ? (featuredProperty.reviews.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / featuredProperty.reviews.length).toFixed(2) : null}
                     t={t}
                     cardHref={`/properties/${featuredProperty.id}`}
                     isFeatured={true}
@@ -63,10 +81,10 @@ export default function ExploreView({
               {/* Grid for normal properties */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-6">
                 {otherProperties.map(p => {
-                  const isFavorited = p.favorites?.length > 0;
+                  const isFavorited = Boolean(p.favorites?.length);
                   const isGuest = session?.user && session.user.role === 'GUEST';
-                  const avgRating = p.reviews?.length > 0 
-                    ? (p.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / p.reviews.length).toFixed(2)
+                  const avgRating = p.reviews && p.reviews.length > 0 
+                    ? (p.reviews.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / p.reviews.length).toFixed(2)
                     : null;
 
                   const cardHref = `/properties/${p.id}`;
@@ -128,10 +146,10 @@ export default function ExploreView({
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {properties.map(p => {
-              const isFavorited = p.favorites?.length > 0;
+              const isFavorited = Boolean(p.favorites?.length);
               const isGuest = session?.user && session.user.role === 'GUEST';
-              const avgRating = p.reviews?.length > 0 
-                ? (p.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / p.reviews.length).toFixed(2)
+              const avgRating = p.reviews && p.reviews.length > 0 
+                ? (p.reviews.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / p.reviews.length).toFixed(2)
                 : null;
 
               const searchLocation = p.address.split(',').pop()?.trim() || p.address;

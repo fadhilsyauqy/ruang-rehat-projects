@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ALL_AMENITIES } from "@/lib/amenities"
 import { formatPrice } from "@/lib/format"
+import type { Dictionary } from "@/lib/dictionary"
 
 export default function SearchSubFilterBar({
   currentLang = "id",
@@ -15,7 +16,7 @@ export default function SearchSubFilterBar({
 }: {
   currentLang?: string
   currentCurrency?: string
-  t: any
+  t: Dictionary
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -233,7 +234,7 @@ export default function SearchSubFilterBar({
               {ALL_AMENITIES.map((item) => {
                 const isSelected = selectedAmenities.includes(item.id)
                 const IconComp = item.icon
-                const labelText = (item.label as any)[currentLang] || item.label.id
+                const labelText = item.label[currentLang as "id" | "en"] || item.label.id
                 return (
                   <button
                     key={item.id}

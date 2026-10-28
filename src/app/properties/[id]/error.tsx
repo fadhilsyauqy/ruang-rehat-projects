@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react"
 import Link from "next/link"
-import { AlertTriangle, RotateCw, Home, Search } from "lucide-react"
+import { AlertTriangle, RotateCw, Home } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 

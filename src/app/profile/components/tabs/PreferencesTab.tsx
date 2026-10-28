@@ -7,11 +7,12 @@ import LanguagePreferenceCard from "./preferences/LanguagePreferenceCard"
 import CurrencyPreferenceCard from "./preferences/CurrencyPreferenceCard"
 import ThemePreferenceCard from "./preferences/ThemePreferenceCard"
 import { toast } from "@/components/ui/use-toast"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface PreferencesTabProps {
   currentLang: string
   currentCurrency: string
-  t: any
+  t: Dictionary
   onProfileSuccess?: () => void
 }
 
@@ -44,12 +45,13 @@ export default function PreferencesTab({
       })
       if (onProfileSuccess) onProfileSuccess()
       router.refresh()
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
       toast({
         variant: "destructive",
         title: currentLang === "en" ? "Update Failed" : "Gagal Memperbarui",
         description:
-          err.message ||
+          msg ||
           (currentLang === "en" ? "Failed to update preferences" : "Gagal memperbarui preferensi"),
       })
     } finally {

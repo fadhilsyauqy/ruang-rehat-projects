@@ -36,9 +36,10 @@ export default function CorporateBillingSection({
       })
       setIsEditingBilling(false)
       onSuccess()
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
       setBillingError(
-        err.message ||
+        msg ||
           (currentLang === "en" ? "Failed to save billing info" : "Gagal menyimpan informasi penagihan")
       )
     } finally {

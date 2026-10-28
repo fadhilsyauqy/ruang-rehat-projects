@@ -9,6 +9,8 @@ import CancelBookingModal from "@/components/bookings/CancelBookingModal"
 import ReportDisputeModal from "@/components/bookings/ReportDisputeModal"
 import { toCheckInDateTimeWIB, toEscrowReleaseDateTimeWIB } from "@/lib/date-standards"
 import { ShieldAlert, RotateCw, CheckCircle2, AlertCircle } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
+import type { GuestTripBooking } from "@/types"
 
 export default function GuestTripActions({ 
   booking, 
@@ -16,8 +18,8 @@ export default function GuestTripActions({
   currentLang = "id",
   nowTime = 0
 }: { 
-  booking: any, 
-  t: any, 
+  booking: GuestTripBooking, 
+  t?: Partial<Dictionary>, 
   currentLang?: string,
   nowTime?: number
 }) {
@@ -55,10 +57,11 @@ export default function GuestTripActions({
           text: data.message || (currentLang === "en" ? "Payment not completed yet" : "Pembayaran belum diselesaikan di gateway")
         })
       }
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
       setSyncMessage({
         type: "error",
-        text: err.message || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran")
+        text: msg || (currentLang === "en" ? "Error checking payment" : "Terjadi kesalahan saat memeriksa pembayaran")
       })
     } finally {
       setSyncing(false)

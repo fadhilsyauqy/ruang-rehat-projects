@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Pencil, X } from "lucide-react"
+import type { Dictionary } from "@/lib/dictionary"
 
 interface EmergencyContactCardProps {
   emergencyName: string
@@ -15,7 +16,7 @@ interface EmergencyContactCardProps {
   onSave: () => void
   loading: boolean
   currentLang: string
-  t: any
+  t: Dictionary
 }
 
 export default function EmergencyContactCard({

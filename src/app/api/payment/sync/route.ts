@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { PaymentStatus, BookingStatus, EscrowStatus } from "@prisma/client"
 import { sendBookingConfirmationEmail, sendHostNewBookingEmail } from "@/lib/notifications"
-// @ts-expect-error - midtrans-client lacks official TypeScript declaration files
 import midtransClient from "midtrans-client"
 
 interface MidtransStatusResponse {

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, RefundStatus } from "@prisma/client"
 
 const prisma = new PrismaClient()
 const USD_TO_IDR_RATE = 18051
@@ -100,7 +100,7 @@ async function main() {
         netHostPayoutIdr,
         escrowReleaseAt,
         refundAmountIdr,
-        refundStatus: refundStatus as any,
+        refundStatus: refundStatus as RefundStatus,
       },
     })
     updatedBookingsCount++

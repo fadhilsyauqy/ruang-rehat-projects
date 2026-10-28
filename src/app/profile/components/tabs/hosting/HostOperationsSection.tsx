@@ -6,7 +6,6 @@ import {
   Calendar,
   CreditCard,
   Plus,
-  SlidersHorizontal,
   Clock,
   Sparkles,
   ShieldCheck,

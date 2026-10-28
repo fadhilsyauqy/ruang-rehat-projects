@@ -13,6 +13,7 @@ import BusinessBillingTab from "./components/tabs/BusinessBillingTab"
 import PreferencesTab from "./components/tabs/PreferencesTab"
 import HostingSectionTab from "./components/tabs/HostingSectionTab"
 import type { ProfileUser, TabType, AdminStats } from "./types"
+import type { Dictionary } from "@/lib/dictionary"
 
 export type { ProfileUser, TabType, AdminStats }
 
@@ -20,7 +21,7 @@ interface ProfileClientProps {
   user: ProfileUser
   currentLang: string
   currentCurrency: string
-  t: any
+  t: Dictionary
   adminStats?: AdminStats
 }
 

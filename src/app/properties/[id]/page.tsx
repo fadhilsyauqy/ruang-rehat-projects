@@ -79,7 +79,7 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
   if (!property) notFound()
 
   const isOwner = session?.user?.id === property.hostId
-  const isAdmin = (session?.user as any)?.role === 'ADMIN'
+  const isAdmin = session?.user?.role === 'ADMIN'
 
   // Proteksi Konsumen: Listing berstatus draft / belum publish hanya dapat dilihat oleh host pemilik dan admin
   if (!property.isPublished && !isOwner && !isAdmin) {
@@ -87,7 +87,7 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
   }
   
   const isFavorited = property.favorites.length > 0
-  const isGuest = session?.user && (session.user as any).role === 'GUEST'
+  const isGuest = session?.user && session.user.role === 'GUEST'
 
   // Avg rating
   const avgRating = property.reviews.length > 0 
@@ -129,8 +129,8 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
           <div className="flex h-full gap-2">
              <img src={property.imageUrls[0]} alt={property.title} className="object-cover w-2/3 h-full rounded-l-2xl" />
              <div className="flex flex-col gap-2 w-1/3 h-full">
-               <img src={property.imageUrls[1] || property.imageUrls[0]} className="object-cover w-full h-1/2 rounded-tr-2xl" />
-               <img src={property.imageUrls[2] || property.imageUrls[0]} className="object-cover w-full h-1/2 rounded-br-2xl" />
+               <img src={property.imageUrls[1] || property.imageUrls[0]} alt={`${property.title} 2`} className="object-cover w-full h-1/2 rounded-tr-2xl" />
+               <img src={property.imageUrls[2] || property.imageUrls[0]} alt={`${property.title} 3`} className="object-cover w-full h-1/2 rounded-br-2xl" />
              </div>
           </div>
         ) : (
@@ -175,7 +175,7 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
                 {property.amenities.map((amenityId: string) => {
                   const item = getAmenityById(amenityId)
                   const IconComp = item.icon
-                  const label = (item.label as any)[currentLang] || item.label.id
+                  const label = item.label[currentLang as "id" | "en"] || item.label.id
                   return (
                     <div 
                       key={amenityId} 
@@ -227,7 +227,7 @@ export default async function PropertyDetail({ params }: { params: Promise<{ id:
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {property.reviews.map(review => {
-                  const getDisplayName = (guest: any) => {
+                  const getDisplayName = (guest: { name?: string | null; hideLastNameReview?: boolean | null }) => {
                     if (!guest?.name) return currentLang === "en" ? "Guest Traveler" : "Tamu Ruang Rehat"
                     if (guest.hideLastNameReview) {
                       const parts = guest.name.trim().split(/\s+/)

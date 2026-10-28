@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 export default auth((req) => {
   const { nextUrl } = req
   const isLoggedIn = !!req.auth
-  const userRole = (req.auth?.user as any)?.role
+  const userRole = req.auth?.user?.role
 
   if (nextUrl.pathname.startsWith("/admin")) {
     if (!isLoggedIn) {

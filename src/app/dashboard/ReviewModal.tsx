@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useRouter } from "next/navigation"
 import { Star, CheckCircle2, Loader2, Sparkles } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import type { Dictionary } from "@/lib/dictionary"
 
 export default function ReviewModal({ 
   bookingId, 
@@ -17,7 +18,7 @@ export default function ReviewModal({
   bookingId: string
   propertyId: string
   currentLang?: string
-  t?: any 
+  t?: Partial<Dictionary> 
 }) {
   const [rating, setRating] = useState(5)
   const [hoverRating, setHoverRating] = useState<number | null>(null)
@@ -70,11 +71,12 @@ export default function ReviewModal({
         setSuccess(false)
         router.refresh()
       }, 1500)
-    } catch (error: any) {
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : ""
       toast({
         variant: "destructive",
         title: currentLang === "en" ? "Review Failed" : "Gagal Mengirim Ulasan",
-        description: error.message || (currentLang === "en" ? "Failed to submit review" : "Gagal mengirimkan ulasan"),
+        description: msg || (currentLang === "en" ? "Failed to submit review" : "Gagal mengirimkan ulasan"),
       })
     } finally {
       setLoading(false)
