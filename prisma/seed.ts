@@ -65,14 +65,14 @@ async function main() {
 
   // Host 1: Andi Wijaya
   const host1 = await prisma.user.upsert({
-    where: { email: 'host@airbnb.com' },
+    where: { email: 'host@ruangrehat.com' },
     update: {
       name: 'Andi Wijaya (Host Superhost)',
       role: Role.HOST,
       kycStatus: KycStatus.VERIFIED,
     },
     create: {
-      email: 'host@airbnb.com',
+      email: 'host@ruangrehat.com',
       name: 'Andi Wijaya (Host Superhost)',
       password: defaultPassword,
       role: Role.HOST,
@@ -105,14 +105,14 @@ async function main() {
 
   // Host 2: Siti Rahmawati
   const host2 = await prisma.user.upsert({
-    where: { email: 'host2@airbnb.com' },
+    where: { email: 'host2@ruangrehat.com' },
     update: {
       name: 'Siti Rahmawati (Host)',
       role: Role.HOST,
       kycStatus: KycStatus.VERIFIED,
     },
     create: {
-      email: 'host2@airbnb.com',
+      email: 'host2@ruangrehat.com',
       name: 'Siti Rahmawati (Host)',
       password: defaultPassword,
       role: Role.HOST,
@@ -145,13 +145,13 @@ async function main() {
 
   // Guest: Budi Santoso
   const guest = await prisma.user.upsert({
-    where: { email: 'tamu@airbnb.com' },
+    where: { email: 'tamu@ruangrehat.com' },
     update: {
       name: 'Budi Santoso (Tamu)',
       role: Role.GUEST,
     },
     create: {
-      email: 'tamu@airbnb.com',
+      email: 'tamu@ruangrehat.com',
       name: 'Budi Santoso (Tamu)',
       password: defaultPassword,
       role: Role.GUEST,
@@ -339,6 +339,15 @@ async function main() {
       },
     })
   }
+
+  // Bersihkan akun dummy lama berbasis @airbnb.com jika ada
+  await prisma.user.deleteMany({
+    where: {
+      email: {
+        in: ['host@airbnb.com', 'host2@airbnb.com', 'tamu@airbnb.com'],
+      },
+    },
+  })
 
   console.log(`✅ Curated properties seeded successfully (${propertiesData.length} properties).`)
   console.log('🎉 Seeding completed successfully!')
