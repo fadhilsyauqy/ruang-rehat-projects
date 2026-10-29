@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     })
 
     if (!existingBooking) {
-      return NextResponse.json({ error: "Booking order not found" }, { status: 404 })
+      return NextResponse.json({ message: "Booking order not found or test ping acknowledged" }, { status: 200 })
     }
 
     // Logic penentuan status berdasarkan payload Midtrans
